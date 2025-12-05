@@ -102,7 +102,12 @@ router.put(
         role: updatedUser.role,
       });
     } catch (err) {
-      console.error("Update profile error:", err); // full error
+      console.error("Update profile error:", {
+        message: err.message,
+        stack: err.stack,
+        full: JSON.stringify(err, null, 2),
+      });
+      // full error
       res.status(500).json({
         message: "Failed to update profile",
         error: err.message, // expose error message temporarily for debugging
