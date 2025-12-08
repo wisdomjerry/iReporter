@@ -13,7 +13,6 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     checkAuth();
@@ -32,7 +31,6 @@ export const AuthProvider = ({ children }) => {
         logout();
       }
     }
-    setLoading(false);
   };
 
   const login = (userData, token) => {
@@ -50,8 +48,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     login,
-    logout,
-    loading
+    logout
   };
 
   return (

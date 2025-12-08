@@ -1,7 +1,7 @@
 import React from "react";
 import { PlusCircle } from "lucide-react";
 
-const FirstLoginPopup = ({ onClose, onAddReport }) => {
+const FirstLoginPopup = ({ onAddReport }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white p-8 rounded-xl shadow-lg max-w-sm w-full text-center">
@@ -13,17 +13,10 @@ const FirstLoginPopup = ({ onClose, onAddReport }) => {
         </p>
 
         <button
-          className="w-full bg-red-600 text-white font-semibold py-2 rounded-lg mb-3 hover:bg-red-700"
+          className="w-full bg-red-600 text-white font-semibold py-2 rounded-lg hover:bg-red-700"
           onClick={onAddReport}
         >
           Add Report
-        </button>
-
-        <button
-          className="w-full border border-gray-300 py-2 rounded-lg text-gray-600"
-          onClick={onClose}
-        >
-          Maybe Later
         </button>
       </div>
     </div>

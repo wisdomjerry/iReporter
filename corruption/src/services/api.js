@@ -38,7 +38,10 @@ const apiService = {
     localStorage.removeItem("token");
     return { message: "Logged out" };
   },
-  markFirstLoginShown: () => apiService.put(`${AUTH_URL}/first-login-seen`),
+  // --- Auth ---
+  markFirstLoginShown: () =>
+  apiService.put(`${AUTH_URL}/first-login-seen`, { firstLoginShown: true }),
+
 
   // --- Reports ---
   getReports: (userId, options = {}) => {
@@ -89,11 +92,6 @@ const apiService = {
     );
     return { success: true };
   },
-
-  // --- Onboarding ---
-  getOnboardingStatus: () => apiService.get(`${AUTH_URL}/onboarding-status`),
-  updateOnboardingStatus: () =>
-    apiService.patch(`${AUTH_URL}/first-login-seen`, { onboardingShown: true }),
 };
 
 export default apiService;

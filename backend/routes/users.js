@@ -145,4 +145,21 @@ router.put("/password", authMiddleware, async (req, res) => {
   }
 });
 
+router.put("/:id/first-login-shown", authMiddleware, async (req, res) => {
+  const userId = req.params.id;
+
+  // Optional: make sure the logged-in user can only update their own firstLoginShown
+  if (parseInt(userId) !== req.user.id)
+    return res.status(403).json({ message: "Forbidden" });
+
+  try {
+    await db.query("UPDATE users SET first_login_shown = 1 WHERE id = ?", [userId]);
+    res.json({ message: "First login marked as shown" });
+  } catch (err) {
+    console.error("Error marking first login:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 module.exports = router;

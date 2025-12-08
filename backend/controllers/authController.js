@@ -104,7 +104,8 @@ const loginUser = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
-        avatar: user.avatar || "", // Already Cloudinary URL
+        avatar: user.avatar || "",
+        firstLoginShown: user.firstLoginShown === 1,
       },
     });
   } catch (err) {
@@ -124,8 +125,7 @@ const getCurrentUser = async (req, res) => {
       [req.user.id]
     );
 
-    if (!rows.length)
-      return res.status(404).json({ error: "User not found" });
+    if (!rows.length) return res.status(404).json({ error: "User not found" });
 
     const u = rows[0];
 

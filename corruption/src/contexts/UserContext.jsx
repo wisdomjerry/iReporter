@@ -13,11 +13,10 @@ export const useUsers = () => useContext(UserContext);
 
 export const UserProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [showFirstLogin, setShowFirstLogin] = useState(false);
-  const { user } = useAuth(); 
-  const token = user?.token;
+  const { user } = useAuth();
 
+  // Check if first login popup should show
   const checkFirstLogin = (user) => {
     setShowFirstLogin(!user.firstLoginShown);
   };
@@ -27,20 +26,18 @@ export const UserProvider = ({ children }) => {
     const fetchUser = async () => {
       try {
         const data = await apiService.getCurrentUser();
-        // Use Cloudinary avatar directly
+        const u = data.user;
         setCurrentUser({
-          ...data.user,
-          avatar: data.user.avatar || "",
-          firstName: data.user.firstName || "",
-          lastName: data.user.lastName || "",
-          phone: data.user.phone || "",
-          role: data.user.role || "user",
+          ...u,
+          avatar: u.avatar || "",
+          firstName: u.firstName || "",
+          lastName: u.lastName || "",
+          phone: u.phone || "",
+          role: u.role || "user",
         });
-        checkFirstLogin(data.user);
+        checkFirstLogin(u);
       } catch (err) {
         console.error("Failed to fetch current user:", err);
-      } finally {
-        setLoading(false);
       }
     };
     fetchUser();
@@ -50,11 +47,12 @@ export const UserProvider = ({ children }) => {
   const refreshUser = useCallback(async () => {
     try {
       const data = await apiService.getCurrentUser();
+      const u = data.user;
       setCurrentUser({
-        ...data.user,
-        avatar: data.user.avatar || "",
+        ...u,
+        avatar: u.avatar || "",
       });
-      checkFirstLogin(data.user);
+      checkFirstLogin(u);
     } catch (err) {
       console.error("Failed to refresh user:", err);
     }
@@ -86,22 +84,18 @@ export const UserProvider = ({ children }) => {
   // Get full profile
   const getProfile = async () => {
     try {
-      const response = await apiService.get("/users/profile");
-      return response.data;
+      const data = await apiService.getProfile();
+      return data;
     } catch (err) {
       console.error("Failed to fetch profile:", err);
       throw err;
     }
   };
 
-  // Update profile (name, bio, phone, avatar)
+  // Update user profile (name, phone, bio, avatar)
   const updateUserProfile = async (formData) => {
     try {
-      const response = await apiService.updateProfile(formData);
-
-      // Backend returns full Cloudinary URL
-      const updatedUser = response.data;
-
+      const updatedUser = await apiService.updateProfile(formData);
       setCurrentUser({
         ...updatedUser,
         avatar: updatedUser.avatar || "",
@@ -110,7 +104,6 @@ export const UserProvider = ({ children }) => {
         phone: updatedUser.phone || "",
         role: updatedUser.role || "user",
       });
-
       return updatedUser;
     } catch (err) {
       console.error("Profile update error:", err);
@@ -121,11 +114,11 @@ export const UserProvider = ({ children }) => {
   // Change password
   const changePassword = async (currentPassword, newPassword) => {
     try {
-      const response = await apiService.put("/users/password", {
+      const data = await apiService.changePassword(
         currentPassword,
-        newPassword,
-      });
-      return response.data;
+        newPassword
+      );
+      return data;
     } catch (err) {
       console.error("Failed to change password:", err);
       throw err;
@@ -139,7 +132,6 @@ export const UserProvider = ({ children }) => {
         setCurrentUser,
         refreshUser,
         logout,
-        loading,
         showFirstLogin,
         markFirstLoginSeen,
         getProfile,
