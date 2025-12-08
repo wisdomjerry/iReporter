@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useUsers } from "../contexts/UserContext";
 import toast from "react-hot-toast";
-import { FiUser, FiLock, FiUpload } from "react-icons/fi";
+import { FiUser, FiLock, FiUpload, FiEye, FiEyeOff } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 
 const UserProfile = () => {
@@ -22,6 +22,12 @@ const UserProfile = () => {
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
+  });
+
+  const [showPasswords, setShowPasswords] = useState({
+    currentPassword: false,
+    newPassword: false,
+    confirmPassword: false,
   });
 
   // Load user data
@@ -96,15 +102,10 @@ const UserProfile = () => {
 
   const handleBackToDashboard = () => {
     if (!currentUser) return;
-
-    if (currentUser.role === "admin") {
-      navigate("/admin");
-    } else {
-      navigate("/dashboard");
-    }
+    navigate(currentUser.role === "admin" ? "/admin" : "/dashboard");
   };
 
-  // Tailwind (light-only)
+  // Tailwind classes
   const inputClass =
     "mt-1 block w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition";
   const disabledInputClass =
@@ -121,7 +122,6 @@ const UserProfile = () => {
         {/* Header & Back Button */}
         <div className="flex justify-between items-center mb-10">
           <h1 className="text-3xl font-extrabold text-gray-900">My Profile</h1>
-
           <button
             onClick={handleBackToDashboard}
             className="px-4 py-2.5 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 transition font-semibold"
@@ -247,7 +247,7 @@ const UserProfile = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {["currentPassword", "newPassword", "confirmPassword"].map(
                 (field) => (
-                  <div key={field}>
+                  <div key={field} className="relative">
                     <label className={labelClass}>
                       {field === "currentPassword"
                         ? "Current Password"
@@ -256,7 +256,7 @@ const UserProfile = () => {
                         : "Confirm New Password"}
                     </label>
                     <input
-                      type="password"
+                      type={showPasswords[field] ? "text" : "password"}
                       name={field}
                       value={passwords[field]}
                       onChange={(e) =>
@@ -265,8 +265,20 @@ const UserProfile = () => {
                           [field]: e.target.value,
                         }))
                       }
-                      className={inputClass}
+                      className={inputClass + " pr-10"} // space for eye icon
                     />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowPasswords((prev) => ({
+                          ...prev,
+                          [field]: !prev[field],
+                        }))
+                      }
+                      className="absolute top-1/2 right-3 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPasswords[field] ? <FiEyeOff /> : <FiEye />}
+                    </button>
                   </div>
                 )
               )}
