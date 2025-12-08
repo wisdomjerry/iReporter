@@ -1,19 +1,15 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import apiService from "../services/api";
+import { useUsers } from "../contexts/UserContext";
 
 const NotificationContext = createContext();
 export const useNotifications = () => useContext(NotificationContext);
 
 export const NotificationProvider = ({ children }) => {
+  const { currentUser } = useUsers();
   const [notifications, setNotifications] = useState([]);
 
-  /** Fetch notifications for the logged-in user/admin */
+  // --- Fetch notifications ---
   const fetchNotifications = useCallback(async () => {
     try {
       const data = await apiService.getNotifications(); // returns array
@@ -27,20 +23,17 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
-  /** Add a new notification and fetch latest from backend */
+  // --- Add notification ---
   const addNotification = async (notification) => {
     try {
-      // Send to backend
-      const res = await apiService.createNotification(notification);
-      // Fetch latest notifications to sync admin/user dashboards
+      await apiService.createNotification(notification);
       await fetchNotifications();
-      return res;
     } catch (err) {
       console.error("Add notification error:", err);
     }
   };
 
-  /** Mark a notification as read */
+  // --- Mark one as read ---
   const markAsRead = async (id) => {
     try {
       await apiService.markNotificationRead(id);
@@ -52,17 +45,17 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  /** Mark all notifications as read */
+  // --- Mark all as read ---
   const markAllAsRead = async () => {
     try {
-      await apiService.markAllNotificationsRead(); // single PUT request
+      await apiService.markAllNotificationsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
     } catch (err) {
       console.error("Mark all notifications read error:", err);
     }
   };
 
-  /** Delete a notification */
+  // --- Delete notification ---
   const deleteNotification = async (id) => {
     try {
       await apiService.deleteNotification(id);
@@ -72,7 +65,7 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  /** Delete all notifications in frontend */
+  // --- Delete all ---
   const deleteAllNotifications = async () => {
     try {
       await Promise.all(notifications.map((n) => deleteNotification(n.id)));
@@ -83,10 +76,10 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  /** Load notifications on mount instantly */
+  // --- Load notifications after currentUser is ready ---
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    if (currentUser) fetchNotifications();
+  }, [currentUser, fetchNotifications]);
 
   return (
     <NotificationContext.Provider
@@ -97,7 +90,7 @@ export const NotificationProvider = ({ children }) => {
         markAllAsRead,
         deleteNotification,
         deleteAllNotifications,
-        addNotification, // now automatically syncs dashboards
+        addNotification,
       }}
     >
       {children}
