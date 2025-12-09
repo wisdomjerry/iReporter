@@ -7,7 +7,7 @@ async function alterUsersTable() {
     await pool.query(`
      UPDATE users
 SET firstLoginShown = 0
-WHERE id = 1; 
+WHERE id = 15; 
 
 
     `);
