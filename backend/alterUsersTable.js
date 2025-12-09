@@ -6,8 +6,10 @@ async function alterUsersTable() {
     // Alter the firstLoginShown column to default FALSE
     await pool.query(`
      UPDATE users
-SET password = '$2b$10$X92D261e0YVKubIU9zqc.uoV5/OmlyW13nF3LrDL2ikBcW2EfoYTK'
-WHERE id = 13;
+SET firstLoginShown = 0
+WHERE id = 1; 
+
+
     `);
 
     console.log("Users table altered successfully!");

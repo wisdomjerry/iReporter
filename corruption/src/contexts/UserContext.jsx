@@ -1,12 +1,5 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import apiService from "../services/api";
-import { useAuth } from "./AuthContext";
 
 const UserContext = createContext();
 export const useUsers = () => useContext(UserContext);
@@ -14,63 +7,52 @@ export const useUsers = () => useContext(UserContext);
 export const UserProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [showFirstLogin, setShowFirstLogin] = useState(false);
-  const { user } = useAuth();
 
-  // Check if first login popup should show
-  const checkFirstLogin = (user) => {
-    setShowFirstLogin(!user.firstLoginShown);
-  };
-
-  // Fetch current user on mount
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const data = await apiService.getCurrentUser();
-        const u = data.user;
-        setCurrentUser({
-          ...u,
-          avatar: u.avatar || "",
-          firstName: u.firstName || "",
-          lastName: u.lastName || "",
-          phone: u.phone || "",
-          role: u.role || "user",
-        });
-        checkFirstLogin(u);
-      } catch (err) {
-        console.error("Failed to fetch current user:", err);
-      }
-    };
-    fetchUser();
+  // --- Helper: check if first login popup should show
+  const checkFirstLogin = useCallback((user) => {
+    setShowFirstLogin(user?.firstLoginShown === false);
   }, []);
 
-  // Refresh user data
-  const refreshUser = useCallback(async () => {
+  // --- Fetch current user
+  const fetchCurrentUser = useCallback(async () => {
     try {
-      const data = await apiService.getCurrentUser();
-      const u = data.user;
+      const { user } = await apiService.getCurrentUser();
       setCurrentUser({
-        ...u,
-        avatar: u.avatar || "",
+        ...user,
+        avatar: user.avatar || "",
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        phone: user.phone || "",
+        role: user.role || "user",
       });
-      checkFirstLogin(u);
+      checkFirstLogin(user);
     } catch (err) {
-      console.error("Failed to refresh user:", err);
+      console.error("Failed to fetch current user:", err);
     }
-  }, []);
+  }, [checkFirstLogin]);
 
-  // Mark first login as seen
-  const markFirstLoginSeen = useCallback(async () => {
+  useEffect(() => {
+    fetchCurrentUser();
+  }, [fetchCurrentUser]);
+
+  // --- Mark first login as seen
+  const markFirstLoginSeen = useCallback(async (callback) => {
     if (!currentUser?.id) return;
     try {
       await apiService.markFirstLoginShown();
       setCurrentUser((prev) => ({ ...prev, firstLoginShown: true }));
       setShowFirstLogin(false);
+      if (callback) callback();
     } catch (err) {
       console.error("Failed to mark first login as seen:", err);
+      throw err;
     }
   }, [currentUser]);
 
-  // Logout
+  // --- Refresh user
+  const refreshUser = useCallback(fetchCurrentUser, [fetchCurrentUser]);
+
+  // --- Logout
   const logout = async () => {
     try {
       await apiService.logout();
@@ -81,18 +63,16 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // Get full profile
+  // --- Profile actions
   const getProfile = async () => {
     try {
-      const data = await apiService.getProfile();
-      return data;
+      return await apiService.getProfile();
     } catch (err) {
       console.error("Failed to fetch profile:", err);
       throw err;
     }
   };
 
-  // Update user profile (name, phone, bio, avatar)
   const updateUserProfile = async (formData) => {
     try {
       const updatedUser = await apiService.updateProfile(formData);
@@ -111,14 +91,9 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // Change password
   const changePassword = async (currentPassword, newPassword) => {
     try {
-      const data = await apiService.changePassword(
-        currentPassword,
-        newPassword
-      );
-      return data;
+      return await apiService.changePassword(currentPassword, newPassword);
     } catch (err) {
       console.error("Failed to change password:", err);
       throw err;

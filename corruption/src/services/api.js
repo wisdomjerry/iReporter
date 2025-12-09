@@ -6,6 +6,8 @@ const REPORTS_URL = "/reports";
 const USERS_URL = "/users";
 const NOTIFICATIONS_URL = "/notifications";
 
+const API_URL = process.env.REACT_APP_API_URL;
+
 // Axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -49,6 +51,16 @@ const apiService = {
     if (userId) url += `?userId=${userId}`;
     if (options.minimal) url += userId ? "&minimal=true" : "?minimal=true";
     return apiService.get(url);
+  },
+
+  getUserReports: async () => {
+    const token = localStorage.getItem("token"); // or wherever you store it
+    const response = await axios.get(`${API_URL}/reports`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
   },
   createReport: (data) => apiService.post(REPORTS_URL, data),
   updateReport: (id, data) => apiService.put(`${REPORTS_URL}/${id}`, data),

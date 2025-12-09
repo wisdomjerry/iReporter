@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import apiService from "../services/api";
 import { useUsers } from "./UserContext";
 import toast from "react-hot-toast";
@@ -13,28 +7,31 @@ const ReportContext = createContext();
 export const useReports = () => useContext(ReportContext);
 
 export const ReportProvider = ({ children }) => {
-  const { currentUser } = useUsers();
+  const { currentUser, setCurrentUser } = useUsers();
 
   const [reports, setReports] = useState([]);
   const [locations, setLocations] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [hasCreatedFirstReport, setHasCreatedFirstReport] = useState(false);
 
-  const normalizeType = (type) =>
-    type?.toLowerCase().replace(/\s+/g, "-") || "";
-  const normalizeStatus = (status) =>
-    status?.toLowerCase().replace(/\s+/g, "-") || "pending";
+  // New improved system
+  const [shouldShowFirstLoginPopup, setShouldShowFirstLoginPopup] = useState(false);
 
-  // ─── FETCH DASHBOARD DATA ───
+  const normalizeType = (type) => type?.toLowerCase().replace(/\s+/g, "-") || "";
+  const normalizeStatus = (status) => status?.toLowerCase().replace(/\s+/g, "-") || "pending";
+
+  // ────────────────────────────────────────────────────────────
+  // FETCH DASHBOARD DATA
+  // ────────────────────────────────────────────────────────────
   const fetchDashboardData = useCallback(async () => {
     if (!currentUser) return;
     setLoading(true);
+
     try {
       const reportsPromise =
         currentUser.role === "admin"
           ? apiService.getReports()
-          : apiService.getReports(currentUser.id);
+          : apiService.getUserReports();
 
       const notificationsPromise = apiService.getNotifications();
 
@@ -52,6 +49,9 @@ export const ReportProvider = ({ children }) => {
       }));
 
       setReports(formattedReports);
+      setNotifications(notificationsData || []);
+
+      // Update locations
       setLocations(
         formattedReports
           .filter((r) => r.lat && r.lng)
@@ -65,8 +65,16 @@ export const ReportProvider = ({ children }) => {
           }))
       );
 
-      setNotifications(notificationsData || []);
-      if (formattedReports.length > 0) setHasCreatedFirstReport(true);
+      // Update firstLoginShown if backend provides it
+      if (
+        currentUser.firstLoginShown === undefined &&
+        reportsData.firstLoginShown !== undefined
+      ) {
+        setCurrentUser((prev) => ({
+          ...prev,
+          firstLoginShown: reportsData.firstLoginShown,
+        }));
+      }
     } catch (err) {
       console.error("Dashboard data fetch error:", err);
       setReports([]);
@@ -75,13 +83,25 @@ export const ReportProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, setCurrentUser]);
 
+  // ────────────────────────────────────────────────────────────
+  // SHOW POPUP IMMEDIATELY AT LOGIN
+  // ────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (currentUser) fetchDashboardData();
+    if (!currentUser) return;
+
+    // Show instantly before API call
+    if (!currentUser.firstLoginShown) {
+      setShouldShowFirstLoginPopup(true);
+    }
+
+    fetchDashboardData();
   }, [currentUser, fetchDashboardData]);
 
-  // ─── CREATE REPORT ───
+  // ────────────────────────────────────────────────────────────
+  // CREATE REPORT
+  // ────────────────────────────────────────────────────────────
   const createReport = async (data) => {
     if (!data.title || !data.description || !data.type) {
       throw new Error("Title, description, and type are required");
@@ -102,6 +122,7 @@ export const ReportProvider = ({ children }) => {
 
     // Optimistic UI
     setReports((prev) => [tempReport, ...(prev || [])]);
+
     if (tempReport.lat && tempReport.lng) {
       setLocations((prev) => [
         ...prev,
@@ -138,6 +159,8 @@ export const ReportProvider = ({ children }) => {
       setReports((prev) =>
         (prev || []).map((r) => (r.id === tempId ? formattedReport : r))
       );
+
+      // Fix location update
       if (formattedReport.lat && formattedReport.lng) {
         setLocations((prev) =>
           (prev || []).map((l) =>
@@ -155,44 +178,50 @@ export const ReportProvider = ({ children }) => {
         );
       }
 
-      setHasCreatedFirstReport(true);
+      // FIRST LOGIN FIX
+      if (!currentUser.firstLoginShown) {
+        try {
+          await apiService.markFirstLoginShown();
+          setCurrentUser((p) => ({ ...p, firstLoginShown: true }));
+        } catch (err) {
+          console.error("Failed to mark first login:", err);
+        }
+      }
+
+      // hide popup forever
+      setShouldShowFirstLoginPopup(false);
+
       return formattedReport;
     } catch (err) {
       console.error("Error creating report:", err);
-      // Rollback temp report
+
+      // Rollback
       setReports((prev) =>
         (prev || []).filter((r) => !r.id.toString().startsWith("temp-"))
       );
       setLocations((prev) =>
         (prev || []).filter((l) => !l.id.toString().startsWith("temp-"))
       );
+
       throw err;
     }
   };
 
-  // ─── UPDATE REPORT ───
+  // ────────────────────────────────────────────────────────────
+  // UPDATE REPORT
+  // ────────────────────────────────────────────────────────────
   const updateReport = async (reportId, reportData) => {
     const oldReport = reports.find((r) => r.id === reportId);
     if (!oldReport) return null;
 
     try {
       const updatedReport = { ...oldReport, ...reportData };
+
       setReports((prev) =>
         (prev || []).map((r) => (r.id === reportId ? updatedReport : r))
       );
 
-      if (updatedReport.lat && updatedReport.lng) {
-        setLocations((prev) =>
-          (prev || []).map((l) =>
-            l.id === reportId ? { ...l, ...updatedReport } : l
-          )
-        );
-      }
-
-      const savedReport = await apiService.put(
-        `/reports/${reportId}`,
-        reportData
-      );
+      const savedReport = await apiService.put(`/reports/${reportId}`, reportData);
 
       const formattedReport = {
         ...savedReport,
@@ -205,56 +234,42 @@ export const ReportProvider = ({ children }) => {
       setReports((prev) =>
         (prev || []).map((r) => (r.id === reportId ? formattedReport : r))
       );
-      if (formattedReport.lat && formattedReport.lng) {
-        setLocations((prev) =>
-          (prev || []).map((l) =>
-            l.id === reportId ? { ...l, ...formattedReport } : l
-          )
-        );
-      }
 
       return formattedReport;
     } catch (err) {
       console.error("Update report error:", err);
       toast.error("Failed to update report");
-      setReports((prev) =>
-        (prev || []).map((r) => (r.id === reportId ? oldReport : r))
-      );
       return null;
     }
   };
 
-  // ─── DELETE REPORT ───
+  // ────────────────────────────────────────────────────────────
+  // DELETE REPORT
+  // ────────────────────────────────────────────────────────────
   const deleteReport = async (reportId) => {
     const oldReports = [...reports];
-    const oldLocations = [...locations];
 
     try {
       setReports((prev) => (prev || []).filter((r) => r.id !== reportId));
-      setLocations((prev) => (prev || []).filter((l) => l.id !== reportId));
-
       await apiService.delete(`/reports/${reportId}`);
-      toast.success("Report deleted successfully");
+      toast.success("Report deleted");
     } catch (err) {
       console.error("Delete report error:", err);
-      toast.error("Failed to delete report");
+      toast.error("Failed");
       setReports(oldReports);
-      setLocations(oldLocations);
     }
   };
 
-  // ─── UPDATE REPORT STATUS ───
+  // ────────────────────────────────────────────────────────────
+  // UPDATE STATUS
+  // ────────────────────────────────────────────────────────────
   const updateReportStatus = async (reportId, status) => {
     const oldReport = reports.find((r) => r.id === reportId);
     if (!oldReport) return null;
 
     try {
-      // Optimistic update
       setReports((prev) =>
         (prev || []).map((r) => (r.id === reportId ? { ...r, status } : r))
-      );
-      setLocations((prev) =>
-        (prev || []).map((l) => (l.id === reportId ? { ...l, status } : l))
       );
 
       await apiService.put(`/reports/${reportId}/status`, { status });
@@ -263,13 +278,13 @@ export const ReportProvider = ({ children }) => {
     } catch (err) {
       console.error("Update status error:", err);
       toast.error("Failed to update status");
-      setReports((prev) =>
-        (prev || []).map((r) => (r.id === reportId ? oldReport : r))
-      );
       return null;
     }
   };
 
+  // ────────────────────────────────────────────────────────────
+  // PROVIDER EXPORT
+  // ────────────────────────────────────────────────────────────
   return (
     <ReportContext.Provider
       value={{
@@ -278,7 +293,10 @@ export const ReportProvider = ({ children }) => {
         locations,
         notifications,
         loading,
-        hasCreatedFirstReport,
+
+        shouldShowFirstLoginPopup,
+        setShouldShowFirstLoginPopup,
+
         fetchDashboardData,
         createReport,
         updateReport,

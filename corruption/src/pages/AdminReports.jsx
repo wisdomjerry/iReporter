@@ -4,7 +4,7 @@ import ListView from "../components/ListView";
 import KanbanView from "../components/KanbanView";
 
 const AdminReports = () => {
-  const { reports, fetchDashboardData, deleteReport } = useReports();
+  const { reports, fetchDashboardData, deleteReport, updateReportStatus  } = useReports();
   const [activeView, setActiveView] = useState("list");
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -15,6 +15,16 @@ const AdminReports = () => {
   const handleDelete = async (id) => {
     await deleteReport(id);
     setRefreshKey((prev) => prev + 1);
+  };
+
+  const handleStatusUpdate = async (reportId, newStatus, userId) => {
+    try {
+      await updateReportStatus(reportId, newStatus);
+      fetchDashboardData();
+      setRefreshKey(prev => prev + 1);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -51,7 +61,7 @@ const AdminReports = () => {
           No reports available.
         </p>
       ) : activeView === "list" ? (
-        <ListView role="admin" refreshKey={refreshKey} />
+        <ListView role="admin" refreshKey={refreshKey} onStatusChange={handleStatusUpdate} />
       ) : (
         <KanbanView
           role="admin"

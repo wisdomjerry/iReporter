@@ -5,39 +5,56 @@ import moment from "moment";
 import { useReports } from "../contexts/ReportContext";
 import toast, { Toaster } from "react-hot-toast";
 
-const StatusTag = ({ status }) => {
-  const normalizedStatus = status?.toLowerCase() || "pending";
-  let displayStatus = status
-    ? status.charAt(0).toUpperCase() + status.slice(1)
-    : "Pending";
+// --- Reusable Status Component ---
+const StatusDisplay = ({ status, onChange }) => {
+  const normalized = status?.toLowerCase() || "pending";
 
-  let classes = "";
-  switch (normalizedStatus) {
-    case "resolved":
-      classes = "bg-green-100 text-green-800";
-      break;
-    case "under investigation":
-      classes = "bg-yellow-100 text-yellow-800";
-      displayStatus = "Under Investigation";
-      break;
-    case "rejected":
-      classes = "bg-red-100 text-red-800";
-      break;
-    case "pending":
-    default:
-      classes = "bg-blue-100 text-blue-800";
-      break;
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case "resolved":
+        return { bg: "bg-green-100", text: "text-green-800" };
+      case "under investigation":
+        return { bg: "bg-yellow-100", text: "text-yellow-800" };
+      case "rejected":
+        return { bg: "bg-red-100", text: "text-red-800" };
+      case "pending":
+      default:
+        return { bg: "bg-blue-100", text: "text-blue-800" };
+    }
+  };
+
+  const style = getStatusStyle(normalized);
+  const statuses = ["pending", "under investigation", "resolved", "rejected"];
+
+  if (onChange) {
+    return (
+      <select
+        value={normalized}
+        onChange={(e) => onChange(e.target.value)}
+        className={`text-xs font-semibold rounded-full px-3 py-1 border focus:outline-none focus:ring-2 ${style.bg} ${style.text}`}
+      >
+        {statuses.map((s) => {
+          const st = getStatusStyle(s);
+          return (
+            <option key={s} value={s} className={`${st.bg} ${st.text}`}>
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </option>
+          );
+        })}
+      </select>
+    );
   }
 
   return (
     <span
-      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${classes}`}
+      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${style.bg} ${style.text}`}
     >
-      {displayStatus}
+      {normalized.charAt(0).toUpperCase() + normalized.slice(1)}
     </span>
   );
 };
 
+// --- ListView Component ---
 const ListView = ({
   role,
   reports,
@@ -45,6 +62,7 @@ const ListView = ({
   setShowModal,
   onDelete,
   refreshKey,
+  onStatusChange,
   loading = false,
   currentUser,
 }) => {
@@ -52,6 +70,11 @@ const ListView = ({
   const displayReports = reports || contextReports || [];
 
   const [internalLoading, setInternalLoading] = useState(false);
+  const [localReports, setLocalReports] = useState(displayReports);
+
+  useEffect(() => {
+    setLocalReports(displayReports);
+  }, [displayReports]);
 
   useEffect(() => {
     const loadReports = async () => {
@@ -61,11 +84,11 @@ const ListView = ({
     if (currentUser) loadReports();
   }, [currentUser, refreshKey]);
 
-  // --- Toast-based Delete Confirmation ---
+  // --- Delete Confirmation with Toast ---
   const handleDeleteWithToast = (reportId) => {
     toast(
       (t) => (
-        <div className="bg-white border  rounded-lg p-9 shadow-lg">
+        <div className="bg-white border rounded-lg p-9 shadow-lg">
           <p className="mb-3 text-gray-800 font-medium">
             Are you sure you want to delete this report?
           </p>
@@ -81,6 +104,9 @@ const ListView = ({
                 toast.dismiss(t.id);
                 try {
                   await onDelete(reportId);
+                  setLocalReports((prev) =>
+                    prev.filter((r) => r.id !== reportId)
+                  );
                   toast.success("Report deleted successfully", {
                     position: "top-center",
                     duration: 2500,
@@ -100,11 +126,24 @@ const ListView = ({
           </div>
         </div>
       ),
-      {
-        position: "top-center",
-        duration: Infinity, // waits for user action
-      }
+      { position: "top-center", duration: Infinity }
     );
+  };
+
+  // --- Status Change Handler ---
+  const handleStatusChange = async (reportId, newStatus, userId) => {
+    try {
+      await onStatusChange(reportId, newStatus, userId);
+      setLocalReports((prev) =>
+        prev.map((report) =>
+          report.id === reportId ? { ...report, status: newStatus } : report
+        )
+      );
+      toast.success("Status updated", { duration: 2000 });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update status", { duration: 2000 });
+    }
   };
 
   const tableHeaders =
@@ -143,12 +182,22 @@ const ListView = ({
       case "type":
         return report.type || "N/A";
       case "status":
-        return <StatusTag status={report.status} />;
+        return (
+          <StatusDisplay
+            status={report.status}
+            onChange={
+              role === "admin"
+                ? (newStatus) =>
+                    handleStatusChange(report.id, newStatus, report.user?.id)
+                : null
+            }
+          />
+        );
       case "date":
         return moment(report.created_at || Date.now()).format("MMM D, YYYY");
       case "actions":
         return (
-          <div className="text-right space-x-9">
+          <div className="text-right space-x-2">
             {role === "user" && report.status === "pending" && (
               <button
                 onClick={() => {
@@ -177,9 +226,7 @@ const ListView = ({
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[50vh]">
-      {/* Toast container */}
       <Toaster position="top-center" reverseOrder={false} />
-
       <h2 className="text-xl font-semibold text-gray-800 mb-4">All Reports</h2>
 
       {/* Desktop Table */}
@@ -209,8 +256,8 @@ const ListView = ({
                   Loading reports...
                 </td>
               </tr>
-            ) : displayReports.length ? (
-              displayReports.map((report) => (
+            ) : localReports.length ? (
+              localReports.map((report) => (
                 <tr
                   key={report.id}
                   className="hover:bg-gray-50 transition duration-150"
@@ -245,8 +292,8 @@ const ListView = ({
       <div className="md:hidden space-y-4">
         {isLoading ? (
           <p className="text-center py-6 text-gray-500">Loading reports...</p>
-        ) : displayReports.length ? (
-          displayReports.map((report) => (
+        ) : localReports.length ? (
+          localReports.map((report) => (
             <div
               key={report.id}
               className="bg-white p-4 rounded-xl shadow border space-y-2"
@@ -273,15 +320,19 @@ const ListView = ({
               </div>
               <div className="flex justify-between">
                 <span className="font-medium">Status:</span>
-                <StatusTag status={report.status} />
+                <StatusDisplay
+                  status={report.status}
+                  onChange={
+                    role === "admin"
+                      ? (newStatus) =>
+                          handleStatusChange(report.id, newStatus, report.user?.id)
+                      : null
+                  }
+                />
               </div>
               <div className="flex justify-between">
                 <span className="font-medium">Created:</span>
-                <span>
-                  {moment(report.created_at || Date.now()).format(
-                    "MMM D, YYYY"
-                  )}
-                </span>
+                <span>{moment(report.created_at || Date.now()).format("MMM D, YYYY")}</span>
               </div>
               {role !== "admin" && (
                 <div className="flex justify-end space-x-2 pt-2">

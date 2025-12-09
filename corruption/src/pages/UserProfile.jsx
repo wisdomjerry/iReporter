@@ -83,6 +83,11 @@ const UserProfile = () => {
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
+
+    if (!passwords.currentPassword) {
+      return toast.error("Enter your current password");
+    }
+
     if (passwords.newPassword !== passwords.confirmPassword) {
       return toast.error("New passwords do not match");
     }
@@ -90,13 +95,14 @@ const UserProfile = () => {
     try {
       await changePassword(passwords.currentPassword, passwords.newPassword);
       toast.success("Password changed successfully!");
+
       setPasswords({
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
       });
-    } catch {
-      toast.error("Failed to change password");
+    } catch (err) {
+      toast.error("Current password is incorrect");
     }
   };
 
@@ -140,7 +146,7 @@ const UserProfile = () => {
           <div className="flex flex-col md:flex-row md:space-x-8">
             {/* Avatar */}
             <div className="flex flex-col items-center mb-6 md:mb-0">
-              <div className="w-36 h-36 rounded-full overflow-hidden border-4 border-indigo-500 shadow-xl">
+              <div className="w-36 h-36 rounded-full overflow-hidden border-4 border-indigo-400 shadow-xl">
                 {avatarPreview ? (
                   <img
                     src={avatarPreview}
@@ -275,7 +281,7 @@ const UserProfile = () => {
                           [field]: !prev[field],
                         }))
                       }
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-5 inset-y-0 my-auto flex items-center text-gray-400 hover:text-gray-600"
                     >
                       {showPasswords[field] ? <FiEyeOff /> : <FiEye />}
                     </button>

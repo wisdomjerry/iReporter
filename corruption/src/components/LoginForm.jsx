@@ -103,11 +103,17 @@ const LoginForm = () => {
 
       // 2️⃣ Fetch current user
       const fullUser = await apiService.getCurrentUser();
-      setCurrentUser(fullUser.user);
 
-      if (!fullUser.user.firstLoginShown && markFirstLoginSeen) {
-        await markFirstLoginSeen();
-      }
+      // 3️⃣ Set user in context including firstLoginShown
+      setCurrentUser({
+        ...fullUser.user,
+        avatar: fullUser.user.avatar || "",
+        firstName: fullUser.user.firstName || "",
+        lastName: fullUser.user.lastName || "",
+        phone: fullUser.user.phone || "",
+        role: fullUser.user.role || "user",
+        firstLoginShown: fullUser.user.firstLoginShown || false, // important!
+      });
 
       // 4️⃣ Success message
       setStatus({
@@ -117,8 +123,11 @@ const LoginForm = () => {
 
       // 5️⃣ Redirect based on role
       setTimeout(() => {
-        if (fullUser.user.role === "admin") navigate("/admin");
-        else navigate("/dashboard");
+        if (fullUser.user.role === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/dashboard"); // first-login popup handled by dashboard
+        }
       }, 1200);
     } catch (err) {
       setStatus({

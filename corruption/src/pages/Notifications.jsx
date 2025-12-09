@@ -71,9 +71,9 @@ const Notifications = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gray-50  min-h-screen">
       <Toaster position="top-center" />
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between pt-12 items-center mb-6">
         <h1 className="text-2xl font-bold">Notifications</h1>
         <div className="flex gap-4">
           {userNotifications.length > 0 && (
