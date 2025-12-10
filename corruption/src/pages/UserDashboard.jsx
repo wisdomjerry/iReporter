@@ -120,10 +120,15 @@ const Dashboard = () => {
   // ⭐ UPDATED EFFECT TO CHECK AND SHOW WELCOME MODAL (No localStorage)
   useEffect(() => {
     if (currentUser && reports) {
-      // Set the prompt state based on the combined DB checks
+      // Prevent the effect from running and hiding the stepper if the user has already started the flow
+      if (stepperOpen) {
+        return;
+      }
+
+      // Only set the prompt state if the stepper is NOT open
       setShowFirstReportPrompt(isFirstTimeReporter(currentUser, reports));
     }
-  }, [reports, currentUser, isFirstTimeReporter]);
+  }, [reports, currentUser, isFirstTimeReporter, stepperOpen]);
 
   // Calculate stats (Remains unchanged)
   useEffect(() => {
