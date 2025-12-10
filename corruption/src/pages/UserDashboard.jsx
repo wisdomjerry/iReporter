@@ -101,7 +101,7 @@ const QuickActions = ({ openStepper, setDefaultType }) => {
 // DASHBOARD
 // -----------------------------------------------------
 const Dashboard = () => {
-  const { currentUser } = useUsers();
+  const { currentUser, markFirstLoginSeen } = useUsers();
   const { reports, updateReport, deleteReport } = useReports();
   const { notifications } = useNotifications();
 
@@ -109,9 +109,13 @@ const Dashboard = () => {
   const [stepperOpen, setStepperOpen] = useState(false);
   const [defaultReportType, setDefaultReportType] = useState("Red Flag");
   const [editingReport, setEditingReport] = useState(null);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(true); // optionally show modal
 
-  // Stepper open function
+  // Show welcome modal only if first login hasn't been seen
+  const [showWelcomeModal, setShowWelcomeModal] = useState(
+    currentUser?.firstLoginShown === false
+  );
+
+  // Open Stepper
   const openStepper = (type = "Red Flag") => {
     setDefaultReportType(type);
     setStepperOpen(true);
@@ -122,9 +126,21 @@ const Dashboard = () => {
     setEditingReport(null);
   };
 
+  // After adding a report
   const handleReportAdded = (newReport) => {
     toast.success(`Report "${newReport.title}" submitted successfully!`);
     handleStepperClose();
+
+    // Hide WelcomeModal permanently
+    markFirstLoginSeen();
+    setShowWelcomeModal(false);
+  };
+
+  // Start first report from WelcomeModal
+  const handleStartFirstReport = () => {
+    openStepper();
+    markFirstLoginSeen();
+    setShowWelcomeModal(false);
   };
 
   // Calculate stats
@@ -150,10 +166,7 @@ const Dashboard = () => {
       {/* Welcome Modal */}
       {showWelcomeModal && (
         <WelcomeModal
-          onStartReport={() => {
-            openStepper();
-            setShowWelcomeModal(false);
-          }}
+          onStartReport={handleStartFirstReport}
           onClose={() => setShowWelcomeModal(false)}
         />
       )}
@@ -169,42 +182,12 @@ const Dashboard = () => {
       {/* STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
         {[
-          {
-            title: "Resolved Reports",
-            value: stats.resolved,
-            icon: CheckCircle,
-            color: "green",
-          },
-          {
-            title: "Pending Reports",
-            value: stats.pending,
-            icon: Clock,
-            color: "gray",
-          },
-          {
-            title: "Under Investigation",
-            value: stats.underInvestigation,
-            icon: Search,
-            color: "yellow",
-          },
-          {
-            title: "Rejected Reports",
-            value: stats.rejected,
-            icon: XCircle,
-            color: "red",
-          },
-          {
-            title: "Red-Flag Reports",
-            value: stats.redFlags,
-            icon: Flag,
-            color: "red",
-          },
-          {
-            title: "Interventions",
-            value: stats.interventions,
-            icon: Zap,
-            color: "blue",
-          },
+          { title: "Resolved Reports", value: stats.resolved, icon: CheckCircle, color: "green" },
+          { title: "Pending Reports", value: stats.pending, icon: Clock, color: "gray" },
+          { title: "Under Investigation", value: stats.underInvestigation, icon: Search, color: "yellow" },
+          { title: "Rejected Reports", value: stats.rejected, icon: XCircle, color: "red" },
+          { title: "Red-Flag Reports", value: stats.redFlags, icon: Flag, color: "red" },
+          { title: "Interventions", value: stats.interventions, icon: Zap, color: "blue" },
         ].map((s, i) => (
           <StatCard key={i} {...s} />
         ))}
