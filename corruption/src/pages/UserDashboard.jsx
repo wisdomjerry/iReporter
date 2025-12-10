@@ -1,13 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  CheckCircle,
-  Flag,
-  Zap,
-  Search,
-  XCircle,
-  Clock,
-  X,
-} from "lucide-react";
+import { CheckCircle, Flag, Zap, Search, XCircle, Clock, X } from "lucide-react";
 import { useReports } from "../contexts/ReportContext";
 import { useUsers } from "../contexts/UserContext";
 import { useNotifications } from "../contexts/NotificationContext";
@@ -31,9 +23,7 @@ const StatCard = ({ title, value, icon: Icon, color }) => {
 
   return (
     <div className="relative bg-white border border-gray-100 rounded-xl p-8 shadow-md hover:shadow-lg transition-all">
-      <div
-        className={`absolute top-4 right-4 p-2 rounded-full ${colors[color]} flex items-center justify-center`}
-      >
+      <div className={`absolute top-4 right-4 p-2 rounded-full ${colors[color]} flex items-center justify-center`}>
         <Icon className="w-6 h-6" />
       </div>
 
@@ -50,30 +40,14 @@ const QuickActions = ({ openStepper, setDefaultType }) => {
   const navigate = useNavigate();
 
   const actions = [
-    {
-      label: "Add Red-Flag Record",
-      icon: Flag,
-      className: "bg-red-500 hover:bg-red-700 text-white",
-      type: "Red Flag",
-    },
-    {
-      label: "Add Intervention",
-      icon: Zap,
-      className: "bg-teal-500 hover:bg-teal-700 text-white",
-      type: "Intervention",
-    },
-    {
-      label: "View All Reports",
-      icon: CheckCircle,
-      className: "bg-gray-100 hover:bg-gray-200 text-gray-800",
-      type: "view",
-    },
+    { label: "Add Red-Flag Record", icon: Flag, className: "bg-red-500 hover:bg-red-700 text-white", type: "Red Flag" },
+    { label: "Add Intervention", icon: Zap, className: "bg-teal-500 hover:bg-teal-700 text-white", type: "Intervention" },
+    { label: "View All Reports", icon: CheckCircle, className: "bg-gray-100 hover:bg-gray-200 text-gray-800", type: "view" },
   ];
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
       <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
-
       <div className="space-y-3">
         {actions.map((a, i) => (
           <button
@@ -83,9 +57,9 @@ const QuickActions = ({ openStepper, setDefaultType }) => {
               setDefaultType(a.type);
               openStepper();
             }}
-            className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition ${
-              a.className
-            } ${a.className.includes("bg-gray") ? "" : "shadow-md"}`}
+            className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition ${a.className} ${
+              a.className.includes("bg-gray") ? "" : "shadow-md"
+            }`}
           >
             <a.icon className="w-5 h-5" />
             <span>{a.label}</span>
@@ -97,7 +71,7 @@ const QuickActions = ({ openStepper, setDefaultType }) => {
 };
 
 // -----------------------------------------------------
-// MAIN DASHBOARD
+// DASHBOARD
 // -----------------------------------------------------
 const Dashboard = () => {
   const { currentUser, markFirstLoginSeen } = useUsers();
@@ -109,51 +83,37 @@ const Dashboard = () => {
   const [stepperOpen, setStepperOpen] = useState(false);
   const [defaultReportType, setDefaultReportType] = useState("Red Flag");
   const [editingReport, setEditingReport] = useState(null);
-
-  // FTUE (First Time User Experience) modal
   const [showFirstReportPrompt, setShowFirstReportPrompt] = useState(false);
 
   // -----------------------------------------------------
-  // FIRST-TIME REPORTER CHECK
+  // Stepper Lock: prevents FTUE effects from closing stepper
   // -----------------------------------------------------
+  const [stepperLocked, setStepperLocked] = useState(false);
+
   const isFirstTimeReporter = useCallback((user, reportsList) => {
     if (!user || !reportsList) return false;
     const noReports = reportsList.length === 0;
     const welcomeNotSeen = user.firstLoginShown === false;
 
-    console.log(
-      `[FTUE CHECK] Reports: ${reportsList.length}, FirstLoginShown: ${user.firstLoginShown}, ShouldShow: ${
-        noReports && welcomeNotSeen
-      }`
-    );
+    console.log(`[FTUE CHECK] Reports: ${reportsList.length}, FirstLoginShown: ${user.firstLoginShown} → ShouldShow: ${noReports && welcomeNotSeen}`);
 
     return noReports && welcomeNotSeen;
   }, []);
 
-  // -----------------------------------------------------
-  // EFFECT: SHOW OR HIDE FTUE MODAL
-  // -----------------------------------------------------
   useEffect(() => {
     if (!currentUser || !reports) return;
 
-    console.log(
-      `[FTUE EFFECT] StepperOpen: ${stepperOpen}, ShowFirstReportPrompt: ${showFirstReportPrompt}`
-    );
-
-    if (stepperOpen) {
-      console.log("[FTUE EFFECT] Stepper is open → Won't show WelcomeModal");
-      return;
-    }
-
     const shouldShow = isFirstTimeReporter(currentUser, reports);
-    console.log(`[FTUE EFFECT] Should show WelcomeModal: ${shouldShow}`);
+    console.log(`[FTUE EFFECT] StepperOpen: ${stepperOpen}, ShowFirstReportPrompt: ${showFirstReportPrompt}, StepperLocked: ${stepperLocked}, ShouldShowModal: ${shouldShow}`);
 
-    setShowFirstReportPrompt(shouldShow);
-  }, [currentUser, reports, stepperOpen, showFirstReportPrompt, isFirstTimeReporter]);
+    // Only show WelcomeModal if Stepper is not locked
+    if (!stepperLocked && !stepperOpen && shouldShow) {
+      setShowFirstReportPrompt(true);
+      console.log("[FTUE EFFECT] Displaying WelcomeModal");
+    }
+  }, [currentUser, reports, stepperOpen, showFirstReportPrompt, stepperLocked, isFirstTimeReporter]);
 
-  // -----------------------------------------------------
-  // EFFECT: CALCULATE DASHBOARD STATS
-  // -----------------------------------------------------
+  // Calculate stats
   useEffect(() => {
     if (!reports) return;
 
@@ -162,66 +122,47 @@ const Dashboard = () => {
       rejected: reports.filter((r) => r.status === "rejected").length,
       pending: reports.filter((r) => r.status === "pending").length,
       underInvestigation: reports.filter((r) =>
-        ["under-investigation", "under investigation"].includes(
-          r.status?.toLowerCase()
-        )
+        ["under-investigation", "under investigation"].includes(r.status?.toLowerCase())
       ).length,
       redFlags: reports.filter((r) => r.type === "red-flag").length,
       interventions: reports.filter((r) => r.type === "intervention").length,
     });
   }, [reports]);
 
-  // -----------------------------------------------------
-  // FTUE HANDLERS
-  // -----------------------------------------------------
+  // FTUE Handlers
   const handleStartFirstReport = () => {
     console.log("[FTUE] User clicked 'Start First Report'");
-    console.log("[FTUE] Closing WelcomeModal and opening Stepper");
-
-    setShowFirstReportPrompt(false); // Close WelcomeModal
-    setStepperOpen(true);            // Open Stepper
+    setShowFirstReportPrompt(false); 
+    setStepperOpen(true); 
+    setStepperLocked(true); // lock stepper to prevent FTUE re-renders from closing it
     setDefaultReportType("Red Flag");
 
     markFirstLoginSeen();
-    console.log("[FTUE] First login flag saved, StepperOpen:", true);
+    console.log("[FTUE] First login flag saved, StepperOpen locked:", true);
   };
 
   const handleWelcomeClose = () => {
-    console.log("[FTUE] User dismissed WelcomeModal");
+    console.log("[FTUE] WelcomeModal dismissed");
     setShowFirstReportPrompt(false);
     markFirstLoginSeen();
   };
 
-  // -----------------------------------------------------
-  // STEPPER HANDLERS
-  // -----------------------------------------------------
+  // Stepper Handlers
   const handleStepperClose = () => {
-    console.log("[STEPPER] User closed the Stepper manually");
+    console.log("[STEPPER] User closed Stepper");
     setStepperOpen(false);
     setEditingReport(null);
+    setStepperLocked(false); // unlock
   };
 
   const handleReportAdded = (newReport) => {
-    console.log(`[STEPPER] Report "${newReport.title}" submitted`);
     toast.success(`Report "${newReport.title}" submitted successfully!`);
+    console.log("[STEPPER] Report submitted, closing Stepper");
     handleStepperClose();
   };
 
-  console.log(
-    `[RENDER] ShowFirstReportPrompt: ${showFirstReportPrompt}, StepperOpen: ${stepperOpen}`
-  );
-
-  // -----------------------------------------------------
-  // RENDER — FTUE MODAL
-  // -----------------------------------------------------
   if (showFirstReportPrompt) {
-    console.log("[RENDER] Displaying WelcomeModal");
-    return (
-      <WelcomeModal
-        onStartReport={handleStartFirstReport}
-        onClose={handleWelcomeClose}
-      />
-    );
+    return <WelcomeModal onStartReport={handleStartFirstReport} onClose={handleWelcomeClose} />;
   }
 
   return (
@@ -229,9 +170,7 @@ const Dashboard = () => {
       {/* HEADER */}
       <header className="mb-8">
         <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
-        <p className="text-gray-500 mt-1">
-          Welcome back, {currentUser?.firstName}!
-        </p>
+        <p className="text-gray-500 mt-1">Welcome back, {currentUser?.firstName}!</p>
       </header>
 
       {/* STATS */}
@@ -260,6 +199,7 @@ const Dashboard = () => {
             onEdit={(report) => {
               setEditingReport(report);
               setStepperOpen(true);
+              setStepperLocked(true); // lock when editing
             }}
             onUpdate={updateReport}
             loading={false}
@@ -267,31 +207,16 @@ const Dashboard = () => {
         </div>
 
         <div className="space-y-6">
-          <QuickActions
-            openStepper={() => setStepperOpen(true)}
-            setDefaultType={setDefaultReportType}
-          />
+          <QuickActions openStepper={() => { setStepperOpen(true); setStepperLocked(true); }} setDefaultType={setDefaultReportType} />
 
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h2 className="text-xl font-semibold text-gray-800 mb-3">
-              Recent Notifications
-            </h2>
-
+            <h2 className="text-xl font-semibold text-gray-800 mb-3">Recent Notifications</h2>
             {notifications.length > 0 ? (
               <ul className="space-y-2 max-h-64 overflow-y-auto">
                 {notifications.slice(0, 5).map((n) => (
-                  <li
-                    key={n.id}
-                    className={`p-3 rounded-lg border cursor-pointer ${
-                      n.is_read === 0
-                        ? "bg-blue-50 border-l-4 border-blue-500"
-                        : "bg-gray-50 border-gray-100"
-                    }`}
-                  >
+                  <li key={n.id} className={`p-3 rounded-lg border cursor-pointer ${n.is_read === 0 ? "bg-blue-50 border-l-4 border-blue-500" : "bg-gray-50 border-gray-100"}`}>
                     <p className="text-gray-700 text-sm">{n.message}</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(n.created_at).toLocaleString()}
-                    </p>
+                    <p className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
                   </li>
                 ))}
               </ul>
@@ -302,14 +227,10 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* REPORT STEPPER MODAL */}
       {stepperOpen && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center p-4 overflow-auto">
           <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full mt-20 p-6 relative">
-            <button
-              onClick={handleStepperClose}
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl"
-            >
+            <button onClick={handleStepperClose} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl">
               <X className="w-6 h-6" />
             </button>
 
