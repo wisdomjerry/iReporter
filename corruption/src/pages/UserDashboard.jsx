@@ -17,7 +17,6 @@ import WelcomeModal from "../components/WelcomeModal";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-
 // -----------------------------------------------------
 // STAT CARD
 // -----------------------------------------------------
@@ -43,7 +42,6 @@ const StatCard = ({ title, value, icon: Icon, color }) => {
     </div>
   );
 };
-
 
 // -----------------------------------------------------
 // QUICK ACTION BUTTONS
@@ -98,7 +96,6 @@ const QuickActions = ({ openStepper, setDefaultType }) => {
   );
 };
 
-
 // -----------------------------------------------------
 // MAIN DASHBOARD
 // -----------------------------------------------------
@@ -113,21 +110,19 @@ const Dashboard = () => {
   const [defaultReportType, setDefaultReportType] = useState("Red Flag");
   const [editingReport, setEditingReport] = useState(null);
 
-  // First-time-user welcome modal
+  // FTUE (First Time User Experience) modal
   const [showFirstReportPrompt, setShowFirstReportPrompt] = useState(false);
-
 
   // -----------------------------------------------------
   // FIRST-TIME REPORTER CHECK
   // -----------------------------------------------------
   const isFirstTimeReporter = useCallback((user, reportsList) => {
     if (!user || !reportsList) return false;
-
     const noReports = reportsList.length === 0;
     const welcomeNotSeen = user.firstLoginShown === false;
 
     console.log(
-      `[FTUE] Reports: ${reportsList.length}, FirstLoginShown: ${user.firstLoginShown} → ShouldShow: ${
+      `[FTUE CHECK] Reports: ${reportsList.length}, FirstLoginShown: ${user.firstLoginShown}, ShouldShow: ${
         noReports && welcomeNotSeen
       }`
     );
@@ -135,20 +130,26 @@ const Dashboard = () => {
     return noReports && welcomeNotSeen;
   }, []);
 
-
   // -----------------------------------------------------
-  // EFFECT: Show FTUE Welcome Modal
+  // EFFECT: SHOW OR HIDE FTUE MODAL
   // -----------------------------------------------------
   useEffect(() => {
     if (!currentUser || !reports) return;
 
-    console.log("[EFFECT] Checking FTUE modal state...");
+    console.log(
+      `[FTUE EFFECT] StepperOpen: ${stepperOpen}, ShowFirstReportPrompt: ${showFirstReportPrompt}`
+    );
 
-    if (stepperOpen) return; // Don't interrupt report creation
+    if (stepperOpen) {
+      console.log("[FTUE EFFECT] Stepper is open → Won't show WelcomeModal");
+      return;
+    }
 
-    setShowFirstReportPrompt(isFirstTimeReporter(currentUser, reports));
-  }, [currentUser, reports, stepperOpen, isFirstTimeReporter]);
+    const shouldShow = isFirstTimeReporter(currentUser, reports);
+    console.log(`[FTUE EFFECT] Should show WelcomeModal: ${shouldShow}`);
 
+    setShowFirstReportPrompt(shouldShow);
+  }, [currentUser, reports, stepperOpen, showFirstReportPrompt, isFirstTimeReporter]);
 
   // -----------------------------------------------------
   // EFFECT: CALCULATE DASHBOARD STATS
@@ -170,56 +171,51 @@ const Dashboard = () => {
     });
   }, [reports]);
 
-
   // -----------------------------------------------------
   // FTUE HANDLERS
   // -----------------------------------------------------
   const handleStartFirstReport = () => {
-    console.log("[FTUE] Starting first report...");
+    console.log("[FTUE] User clicked 'Start First Report'");
+    console.log("[FTUE] Closing WelcomeModal and opening Stepper");
 
-    setShowFirstReportPrompt(false);
-    setStepperOpen(true);
+    setShowFirstReportPrompt(false); // Close WelcomeModal
+    setStepperOpen(true);            // Open Stepper
     setDefaultReportType("Red Flag");
 
     markFirstLoginSeen();
-
-    console.log("[FTUE] First login flag saved.");
+    console.log("[FTUE] First login flag saved, StepperOpen:", true);
   };
 
   const handleWelcomeClose = () => {
-    console.log("[FTUE] Welcome modal dismissed.");
-
+    console.log("[FTUE] User dismissed WelcomeModal");
     setShowFirstReportPrompt(false);
     markFirstLoginSeen();
   };
-
 
   // -----------------------------------------------------
   // STEPPER HANDLERS
   // -----------------------------------------------------
   const handleStepperClose = () => {
-    console.log("[Stepper] Closing report stepper...");
-
+    console.log("[STEPPER] User closed the Stepper manually");
     setStepperOpen(false);
     setEditingReport(null);
   };
 
   const handleReportAdded = (newReport) => {
+    console.log(`[STEPPER] Report "${newReport.title}" submitted`);
     toast.success(`Report "${newReport.title}" submitted successfully!`);
     handleStepperClose();
   };
 
-
   console.log(
-    `[RENDER] WelcomePrompt: ${showFirstReportPrompt}, StepperOpen: ${stepperOpen}`
+    `[RENDER] ShowFirstReportPrompt: ${showFirstReportPrompt}, StepperOpen: ${stepperOpen}`
   );
 
-
   // -----------------------------------------------------
-  // RENDER — FIRST TIME MODAL
+  // RENDER — FTUE MODAL
   // -----------------------------------------------------
   if (showFirstReportPrompt) {
-    console.log("[RENDER] Showing WelcomeModal");
+    console.log("[RENDER] Displaying WelcomeModal");
     return (
       <WelcomeModal
         onStartReport={handleStartFirstReport}
@@ -228,10 +224,8 @@ const Dashboard = () => {
     );
   }
 
-
   return (
     <div className="min-h-screen bg-gray-50 p-4 pt-20">
-
       {/* HEADER */}
       <header className="mb-8">
         <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
@@ -239,7 +233,6 @@ const Dashboard = () => {
           Welcome back, {currentUser?.firstName}!
         </p>
       </header>
-
 
       {/* STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
@@ -255,10 +248,8 @@ const Dashboard = () => {
         ))}
       </div>
 
-
       {/* REPORTS + ACTIONS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* USER REPORTS */}
         <div className="lg:col-span-2">
           <UserReportsView
             reports={reports}
@@ -275,14 +266,12 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* QUICK ACTIONS + NOTIFICATIONS */}
         <div className="space-y-6">
           <QuickActions
             openStepper={() => setStepperOpen(true)}
             setDefaultType={setDefaultReportType}
           />
 
-          {/* NOTIFICATIONS */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h2 className="text-xl font-semibold text-gray-800 mb-3">
               Recent Notifications
@@ -313,7 +302,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-
       {/* REPORT STEPPER MODAL */}
       {stepperOpen && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center p-4 overflow-auto">
@@ -334,7 +322,6 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };
