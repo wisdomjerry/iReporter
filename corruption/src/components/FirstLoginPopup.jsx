@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { CheckCircle } from "lucide-react";
 
-const FirstLoginPopup = ({ onAddReport }) => {
+const FirstLoginPopup = ({ onContinue }) => {
   const buttonRef = useRef(null);
 
   // Auto-focus the Continue button
