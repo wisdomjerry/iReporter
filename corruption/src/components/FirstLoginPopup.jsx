@@ -22,7 +22,7 @@ const FirstLoginPopup = ({ onAddReport }) => {
 
         <button
           ref={buttonRef}
-          onClick={onAddReport}
+          onClick={onContinue}
           className="w-full py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400"
         >
           Continue

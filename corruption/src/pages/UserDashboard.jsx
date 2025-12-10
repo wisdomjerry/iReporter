@@ -67,38 +67,17 @@ const QuickActions = ({ openStepper, setDefaultType }) => {
 
 // ───── DASHBOARD ─────
 const Dashboard = () => {
-  const { currentUser, markFirstLoginSeen } = useUsers();
+  const { currentUser } = useUsers();
   const { reports, updateReport, deleteReport } = useReports();
   const { notifications } = useNotifications();
 
   const [stats, setStats] = useState({});
+  const [showPopup, setShowPopup] = useState(true); // always show first-login popup initially
   const [stepperOpen, setStepperOpen] = useState(false);
   const [defaultReportType, setDefaultReportType] = useState("Red Flag");
   const [editingReport, setEditingReport] = useState(null);
-  const [showFirstPopup, setShowFirstPopup] = useState(false);
 
-  const navigate = useNavigate();
-
-  // Show first-login popup only for first-time users
-  useEffect(() => {
-    if (currentUser?.firstLoginShown === false) {
-      setShowFirstPopup(true);
-    }
-  }, [currentUser]);
-
-  // Handle Continue button in popup
-  const handleFirstPopupContinue = async () => {
-    setShowFirstPopup(false); // close popup
-    setStepperOpen(true);     // open stepper
-
-    try {
-      await markFirstLoginSeen(); // mark first login in backend
-    } catch (err) {
-      console.error("Failed to mark first login:", err);
-    }
-  };
-
-  // Calculate dashboard stats
+  // Calculate stats
   useEffect(() => {
     if (!reports) return;
 
@@ -114,82 +93,86 @@ const Dashboard = () => {
     });
   }, [reports]);
 
+  // Handle popup continue
+  const handleContinue = () => {
+    console.log("Continue clicked! Opening stepper...");
+    setShowPopup(false);
+    setStepperOpen(true);
+  };
+
   return (
-    <div className="m-0 bg-gray-50 min-h-screen relative p-4 pt-20">
-      {/* FIRST LOGIN POPUP */}
-      {showFirstPopup && <FirstLoginPopup onContinue={handleFirstPopupContinue} />}
+    <div className="min-h-screen bg-gray-50 p-4 pt-20">
+      <header className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
+        <p className="text-gray-500 mt-1">Welcome back, {currentUser?.firstName}!</p>
+      </header>
 
-      {/* DASHBOARD CONTENT */}
-      <div className="p-4">
-        <header className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
-          <p className="text-gray-500 mt-1">Welcome back, {currentUser?.firstName}!</p>
-        </header>
+      {/* STATS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+        {[
+          { title: "Resolved Reports", value: stats.resolved, icon: CheckCircle, color: "green" },
+          { title: "Pending Reports", value: stats.pending, icon: Clock, color: "gray" },
+          { title: "Under Investigation", value: stats.underInvestigation, icon: Search, color: "yellow" },
+          { title: "Rejected Reports", value: stats.rejected, icon: XCircle, color: "red" },
+          { title: "Red-Flag Reports", value: stats.redFlags, icon: Flag, color: "red" },
+          { title: "Interventions", value: stats.interventions, icon: Zap, color: "blue" },
+        ].map((s, i) => (
+          <StatCard key={i} {...s} />
+        ))}
+      </div>
 
-        {/* STATS GRID */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-          {[
-            { title: "Resolved Reports", value: stats.resolved, icon: CheckCircle, color: "green" },
-            { title: "Pending Reports", value: stats.pending, icon: Clock, color: "gray" },
-            { title: "Under Investigation", value: stats.underInvestigation, icon: Search, color: "yellow" },
-            { title: "Rejected Reports", value: stats.rejected, icon: XCircle, color: "red" },
-            { title: "Red-Flag Reports", value: stats.redFlags, icon: Flag, color: "red" },
-            { title: "Interventions", value: stats.interventions, icon: Zap, color: "blue" },
-          ].map((s, i) => (
-            <StatCard key={i} {...s} />
-          ))}
+      {/* REPORTS + QUICK ACTIONS */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <UserReportsView
+            reports={reports}
+            role="user"
+            setEditingReport={setEditingReport}
+            setShowModal={setStepperOpen}
+            onDelete={deleteReport}
+            onEdit={(report) => {
+              setEditingReport(report);
+              setStepperOpen(true);
+            }}
+            onUpdate={updateReport}
+            loading={false}
+          />
         </div>
 
-        {/* REPORTS + QUICK ACTIONS */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <UserReportsView
-              reports={reports}
-              role="user"
-              setEditingReport={setEditingReport}
-              setShowModal={setStepperOpen}
-              onDelete={deleteReport}
-              onEdit={(report) => {
-                setEditingReport(report);
-                setStepperOpen(true);
-              }}
-              onUpdate={updateReport}
-              loading={false}
-            />
-          </div>
+        <div className="space-y-6">
+          <QuickActions
+            openStepper={() => setStepperOpen(true)}
+            setDefaultType={setDefaultReportType}
+          />
 
-          <div className="space-y-6">
-            <QuickActions
-              openStepper={() => setStepperOpen(true)}
-              setDefaultType={setDefaultReportType}
-            />
-
-            {/* Notifications */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-xl font-semibold text-gray-800">Recent Notifications</h2>
-              </div>
-
-              {notifications.length > 0 ? (
-                <ul className="space-y-2 max-h-64 overflow-y-auto">
-                  {notifications.slice(0, 5).map(n => (
-                    <li key={n.id} className={`p-3 rounded-lg border cursor-pointer ${
-                      n.is_read === 0 ? "bg-blue-50 border-l-4 border-blue-500" : "bg-gray-50 border-gray-100"
-                    }`}>
-                      <p className="text-gray-700 text-sm">{n.message}</p>
-                      <p className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-400 text-sm">No recent notifications</p>
-              )}
+          {/* Notifications */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-xl font-semibold text-gray-800">Recent Notifications</h2>
             </div>
+
+            {notifications.length > 0 ? (
+              <ul className="space-y-2 max-h-64 overflow-y-auto">
+                {notifications.slice(0, 5).map(n => (
+                  <li key={n.id} className={`p-3 rounded-lg border cursor-pointer ${
+                    n.is_read === 0 ? "bg-blue-50 border-l-4 border-blue-500" : "bg-gray-50 border-gray-100"
+                  }`}>
+                    <p className="text-gray-700 text-sm">{n.message}</p>
+                    <p className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-400 text-sm">No recent notifications</p>
+            )}
           </div>
         </div>
       </div>
 
-      {/* REPORT STEPPER MODAL */}
+      {/* FIRST LOGIN POPUP */}
+      {showPopup && <FirstLoginPopup onContinue={handleContinue} />}
+
+      {/* REPORT STEPPER */}
       {stepperOpen && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center p-4 overflow-auto">
           <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full mt-20 p-6 relative">
@@ -202,11 +185,7 @@ const Dashboard = () => {
             <ReportStepper
               defaultType={defaultReportType}
               editingReport={editingReport}
-              onClose={() => {
-                setStepperOpen(false);
-                setEditingReport(null);
-              }}
-              onReportAdded={() => toast.success("Report added!")}
+              onClose={() => setStepperOpen(false)}
             />
           </div>
         </div>
