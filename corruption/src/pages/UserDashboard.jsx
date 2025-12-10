@@ -99,19 +99,20 @@ const Dashboard = () => {
   const showFirstPopup = currentUser?.firstLoginShown === false;
 
   const handleFirstReportAdded = async () => {
-  try {
-    // Open stepper first
-    setDefaultReportType("Red Flag");
-    setEditingReport(null);
-    setStepperOpen(true);
+    try {
+      // 1️⃣ Open the stepper FIRST and KEEP it open
+      setDefaultReportType("Red Flag");
+      setEditingReport(null);
+      setStepperOpen(true);
 
-    // Then mark first login as seen in the background
-    await markFirstLoginSeen();
-  } catch (err) {
-    console.error("Failed to mark first login:", err);
-  }
-};
-
+      // 2️⃣ Delay the DB update so the modal doesn’t close
+      setTimeout(() => {
+        markFirstLoginSeen(); // don't await it
+      }, 500);
+    } catch (err) {
+      console.error("Failed to mark first login:", err);
+    }
+  };
 
   console.log("firstLoginShown:", currentUser?.firstLoginShown);
 
