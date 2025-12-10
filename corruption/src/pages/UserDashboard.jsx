@@ -35,31 +35,14 @@ const StatCard = ({ title, value, icon: Icon, color }) => {
 const QuickActions = ({ openStepper, setDefaultType }) => {
   const navigate = useNavigate();
   const actions = [
-    {
-      label: "Add Red-Flag Record",
-      icon: Flag,
-      className: "bg-red-500 hover:bg-red-700 text-white",
-      type: "Red Flag",
-    },
-    {
-      label: "Add Intervention",
-      icon: Zap,
-      className: "bg-teal-500 hover:bg-teal-700 text-white",
-      type: "Intervention",
-    },
-    {
-      label: "View All Reports",
-      icon: CheckCircle,
-      className: "bg-gray-100 hover:bg-gray-200 text-gray-800",
-      type: "view",
-    },
+    { label: "Add Red-Flag Record", icon: Flag, className: "bg-red-500 hover:bg-red-700 text-white", type: "Red Flag" },
+    { label: "Add Intervention", icon: Zap, className: "bg-teal-500 hover:bg-teal-700 text-white", type: "Intervention" },
+    { label: "View All Reports", icon: CheckCircle, className: "bg-gray-100 hover:bg-gray-200 text-gray-800", type: "view" },
   ];
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-      <h2 className="text-xl font-semibold text-gray-800 mb-4">
-        Quick Actions
-      </h2>
+      <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
       <div className="space-y-3">
         {actions.map((a, i) => (
           <button
@@ -90,120 +73,68 @@ const Dashboard = () => {
 
   const [stats, setStats] = useState({});
   const [stepperOpen, setStepperOpen] = useState(false);
-  const [defaultReportType, setDefaultReportType] = useState("");
+  const [defaultReportType, setDefaultReportType] = useState("Red Flag");
   const [editingReport, setEditingReport] = useState(null);
-
-  const [isUserLoaded, setIsUserLoaded] = useState(false);
-  const [showFirstPopupLocal, setShowFirstPopupLocal] = useState(false);
+  const [showFirstPopup, setShowFirstPopup] = useState(false);
 
   const navigate = useNavigate();
 
-  // Detect when user has fully loaded
+  // Show first-login popup for first-time users
   useEffect(() => {
-    if (currentUser !== undefined && currentUser !== null) {
-      setIsUserLoaded(true);
+    if (currentUser?.firstLoginShown === false) {
+      setShowFirstPopup(true);
     }
   }, [currentUser]);
 
-  // Show first login popup using local state
-  useEffect(() => {
-    if (isUserLoaded && currentUser?.firstLoginShown === false) {
-      setShowFirstPopupLocal(true);
-    }
-  }, [isUserLoaded, currentUser]);
+  // Handle Continue button in popup
+  const handleFirstPopupContinue = async () => {
+    setShowFirstPopup(false);   // Close popup
+    setStepperOpen(true);       // Open stepper
 
-  // Handle first report addition from popup
-  const handleFirstReportAdded = async () => {
     try {
-      setShowFirstPopupLocal(false); // close popup locally
-      setDefaultReportType("Red Flag");
-      setEditingReport(null);
-      setStepperOpen(true);
-
-      // mark in backend
-      await markFirstLoginSeen();
+      await markFirstLoginSeen(); // Mark first login in backend
     } catch (err) {
       console.error("Failed to mark first login:", err);
     }
   };
 
-  console.log("firstLoginShown:", currentUser?.firstLoginShown);
-
-  // ───── Calculate dashboard stats ─────
+  // Calculate dashboard stats
   useEffect(() => {
     if (!reports) return;
 
     setStats({
-      resolved: reports.filter((r) => r.status === "resolved").length,
-      rejected: reports.filter((r) => r.status === "rejected").length,
-      pending: reports.filter((r) => r.status === "pending").length,
-      underInvestigation: reports.filter((r) =>
-        ["under-investigation", "under investigation"].includes(
-          r.status?.toLowerCase()
-        )
+      resolved: reports.filter(r => r.status === "resolved").length,
+      rejected: reports.filter(r => r.status === "rejected").length,
+      pending: reports.filter(r => r.status === "pending").length,
+      underInvestigation: reports.filter(r =>
+        ["under-investigation", "under investigation"].includes(r.status?.toLowerCase())
       ).length,
-      redFlags: reports.filter((r) => r.type === "red-flag").length,
-      interventions: reports.filter((r) => r.type === "intervention").length,
+      redFlags: reports.filter(r => r.type === "red-flag").length,
+      interventions: reports.filter(r => r.type === "intervention").length,
     });
   }, [reports]);
 
   return (
     <div className="m-0 bg-gray-50 min-h-screen relative p-4 pt-20">
       {/* FIRST LOGIN POPUP */}
-      {showFirstPopupLocal && (
-        <FirstLoginPopup onAddReport={handleFirstReportAdded} />
-      )}
+      {showFirstPopup && <FirstLoginPopup onAddReport={handleFirstPopupContinue} />}
 
       {/* DASHBOARD CONTENT */}
       <div className="p-4">
         <header className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Dashboard Overview
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Welcome back, {currentUser?.firstName}!
-          </p>
+          <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
+          <p className="text-gray-500 mt-1">Welcome back, {currentUser?.firstName}!</p>
         </header>
 
         {/* STATS GRID */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
           {[
-            {
-              title: "Resolved Reports",
-              value: stats.resolved,
-              icon: CheckCircle,
-              color: "green",
-            },
-            {
-              title: "Pending Reports",
-              value: stats.pending,
-              icon: Clock,
-              color: "gray",
-            },
-            {
-              title: "Under Investigation",
-              value: stats.underInvestigation,
-              icon: Search,
-              color: "yellow",
-            },
-            {
-              title: "Rejected Reports",
-              value: stats.rejected,
-              icon: XCircle,
-              color: "red",
-            },
-            {
-              title: "Red-Flag Reports",
-              value: stats.redFlags,
-              icon: Flag,
-              color: "red",
-            },
-            {
-              title: "Interventions",
-              value: stats.interventions,
-              icon: Zap,
-              color: "blue",
-            },
+            { title: "Resolved Reports", value: stats.resolved, icon: CheckCircle, color: "green" },
+            { title: "Pending Reports", value: stats.pending, icon: Clock, color: "gray" },
+            { title: "Under Investigation", value: stats.underInvestigation, icon: Search, color: "yellow" },
+            { title: "Rejected Reports", value: stats.rejected, icon: XCircle, color: "red" },
+            { title: "Red-Flag Reports", value: stats.redFlags, icon: Flag, color: "red" },
+            { title: "Interventions", value: stats.interventions, icon: Zap, color: "blue" },
           ].map((s, i) => (
             <StatCard key={i} {...s} />
           ))}
@@ -236,26 +167,17 @@ const Dashboard = () => {
             {/* Notifications */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <div className="flex justify-between items-center mb-3">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  Recent Notifications
-                </h2>
+                <h2 className="text-xl font-semibold text-gray-800">Recent Notifications</h2>
               </div>
 
               {notifications.length > 0 ? (
                 <ul className="space-y-2 max-h-64 overflow-y-auto">
-                  {notifications.slice(0, 5).map((n) => (
-                    <li
-                      key={n.id}
-                      className={`p-3 rounded-lg border cursor-pointer ${
-                        n.is_read === 0
-                          ? "bg-blue-50 border-l-4 border-blue-500"
-                          : "bg-gray-50 border-gray-100"
-                      }`}
-                    >
+                  {notifications.slice(0, 5).map(n => (
+                    <li key={n.id} className={`p-3 rounded-lg border cursor-pointer ${
+                      n.is_read === 0 ? "bg-blue-50 border-l-4 border-blue-500" : "bg-gray-50 border-gray-100"
+                    }`}>
                       <p className="text-gray-700 text-sm">{n.message}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {new Date(n.created_at).toLocaleString()}
-                      </p>
+                      <p className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
                     </li>
                   ))}
                 </ul>
