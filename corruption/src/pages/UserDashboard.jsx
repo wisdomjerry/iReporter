@@ -93,22 +93,30 @@ const Dashboard = () => {
   const [defaultReportType, setDefaultReportType] = useState("");
   const [editingReport, setEditingReport] = useState(null);
 
+  const [isUserLoaded, setIsUserLoaded] = useState(false);
+
   const navigate = useNavigate();
 
-  // ───── First-login popup logic ─────
-  const showFirstPopup = currentUser?.firstLoginShown === false;
+  // Detect when user has fully loaded
+  useEffect(() => {
+    if (currentUser !== undefined && currentUser !== null) {
+      setIsUserLoaded(true);
+    }
+  }, [currentUser]);
+
+  // Show popup ONLY when user is loaded
+  const showFirstPopup =
+    isUserLoaded && currentUser?.firstLoginShown === false && !stepperOpen;
 
   const handleFirstReportAdded = async () => {
     try {
-      // 1️⃣ Open the stepper FIRST and KEEP it open
+      // Mark user seen BEFORE opening the stepper
+      await markFirstLoginSeen();
+
+      // Now safely open stepper
       setDefaultReportType("Red Flag");
       setEditingReport(null);
       setStepperOpen(true);
-
-      // 2️⃣ Delay the DB update so the modal doesn’t close
-      setTimeout(() => {
-        markFirstLoginSeen(); // don't await it
-      }, 500);
     } catch (err) {
       console.error("Failed to mark first login:", err);
     }
@@ -196,7 +204,7 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* REPORTS + QUICK ACTIONS + NOTIFICATIONS */}
+        {/* REPORTS + QUICK ACTIONS */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <UserReportsView
