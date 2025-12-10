@@ -79,7 +79,7 @@ const Dashboard = () => {
 
   const navigate = useNavigate();
 
-  // Show first-login popup for first-time users
+  // Show first-login popup only for first-time users
   useEffect(() => {
     if (currentUser?.firstLoginShown === false) {
       setShowFirstPopup(true);
@@ -88,11 +88,11 @@ const Dashboard = () => {
 
   // Handle Continue button in popup
   const handleFirstPopupContinue = async () => {
-    setShowFirstPopup(false);   // Close popup
-    setStepperOpen(true);       // Open stepper
+    setShowFirstPopup(false); // close popup
+    setStepperOpen(true);     // open stepper
 
     try {
-      await markFirstLoginSeen(); // Mark first login in backend
+      await markFirstLoginSeen(); // mark first login in backend
     } catch (err) {
       console.error("Failed to mark first login:", err);
     }
@@ -117,7 +117,7 @@ const Dashboard = () => {
   return (
     <div className="m-0 bg-gray-50 min-h-screen relative p-4 pt-20">
       {/* FIRST LOGIN POPUP */}
-      {showFirstPopup && <FirstLoginPopup onAddReport={handleFirstPopupContinue} />}
+      {showFirstPopup && <FirstLoginPopup onContinue={handleFirstPopupContinue} />}
 
       {/* DASHBOARD CONTENT */}
       <div className="p-4">
