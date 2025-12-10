@@ -3,15 +3,73 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogIn, Mail, Lock, CheckCircle, XCircle } from "lucide-react";
 import apiService from "../services/api";
-import { useUsers } from "../contexts/UserContext"; // ⭐ NOTE: Need to get refreshUser here
-import API_BASE_URL from "../config/api";
+import { useUsers } from "../contexts/UserContext";
 
-// ... (AuthInput and StatusMessage components remain unchanged) ...
+// ──────────────────────────────────────────────
+//  AuthInput Component
+// ──────────────────────────────────────────────
+const AuthInput = ({ label, type, value, onChange, placeholder, icon: Icon }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+  const inputType = isPassword && showPassword ? "text" : type;
 
+  return (
+    <div className="mb-5">
+      <label className="block text-xs font-semibold uppercase mb-1 text-red-600">
+        {label}
+      </label>
+
+      <div className="relative">
+        <input
+          type={inputType}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          className="w-full p-3 pl-10 pr-10 rounded-lg placeholder:text-xs border border-red-200 shadow-sm focus:ring-2 focus:outline-none"
+        />
+
+        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500" />
+
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+          >
+            {showPassword ? "🙈" : "👁️"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ──────────────────────────────────────────────
+//  StatusMessage Component
+// ──────────────────────────────────────────────
+const StatusMessage = ({ type, message }) => {
+  if (!message) return null;
+
+  const Icon = type === "success" ? CheckCircle : XCircle;
+  const color =
+    type === "success"
+      ? "bg-green-100 text-green-700"
+      : "bg-red-100 text-red-700";
+
+  return (
+    <div className={`flex items-center p-3 mb-4 rounded-lg text-sm ${color}`}>
+      <Icon className="w-5 h-5 mr-3" />
+      <p className="font-medium">{message}</p>
+    </div>
+  );
+};
+
+// ──────────────────────────────────────────────
+//  LoginForm Component
+// ──────────────────────────────────────────────
 const LoginForm = () => {
   const navigate = useNavigate();
-  // ⭐ UPDATED: Get refreshUser from context
-  const { refreshUser } = useUsers(); 
+  const { refreshUser } = useUsers();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,6 +77,7 @@ const LoginForm = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
+  // ─── Validation ───────────────────────────────
   const validate = () => {
     const newErrors = {};
 
@@ -32,39 +91,29 @@ const LoginForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // ─── Login Handler ────────────────────────────
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!validate()) return;
 
-    setStatus({ type: null, message: "" });
     setLoading(true);
+    setStatus({ type: null, message: "" });
 
     try {
-      // 1️⃣ Login: This saves the token to localStorage and returns the user object.
       const res = await apiService.login(email, password);
 
-      // 2️⃣ Trigger UserContext to fetch the full user and set context state
-      await refreshUser(); // <--- ⭐ CRITICAL CHANGE: Use the centralized context logic
+      await refreshUser(); // refresh user context
 
-      // The refreshed user is now guaranteed to be in the context state (currentUser)
-      const role = res.user?.role; // We get the role from the initial login response for quick redirect
+      const role = res.user?.role;
 
-      // 3️⃣ Success message
-      setStatus({
-        type: "success",
-        message: "Login successful! Redirecting...",
-      });
+      setStatus({ type: "success", message: "Login successful! Redirecting..." });
 
-      // 4️⃣ Redirect based on role
       setTimeout(() => {
-        if (role === "admin") {
-          navigate("/admin");
-        } else {
-          navigate("/dashboard");
-        }
+        navigate(role === "admin" ? "/admin" : "/dashboard");
       }, 1200);
     } catch (err) {
       console.error("Login error:", err);
+
       setStatus({
         type: "error",
         message: err.response?.data?.message || "Invalid email or password",
@@ -74,8 +123,11 @@ const LoginForm = () => {
     }
   };
 
+  // ──────────────────────────────────────────────
+  //  UI
+  // ──────────────────────────────────────────────
   return (
-    <div className="flex flex-col bg-slate-100 p-8 sm:p-12 lg:p-16 justify-center">
+    <div className="flex flex-col justify-center bg-slate-100 p-8 sm:p-12 lg:p-16">
       <h2 className="text-3xl font-extrabold mb-2 text-red-600">
         Welcome Back!
       </h2>
@@ -83,48 +135,38 @@ const LoginForm = () => {
 
       <StatusMessage type={status.type} message={status.message} />
 
-      <form onSubmit={handleLogin} className="w-full" noValidate>
-        <div className="mb-4">
-          <AuthInput
-            label="Email Address"
-            type="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              // Removed redundant validate() call here as it runs on submit
-            }}
-            placeholder="wisdom@example.com"
-            icon={Mail}
-          />
-          {errors.email && (
-            <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-          )}
-        </div>
+      <form onSubmit={handleLogin} noValidate className="w-full">
+        <AuthInput
+          label="Email Address"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="wisdom@example.com"
+          icon={Mail}
+        />
+        {errors.email && (
+          <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+        )}
 
-        <div className="mb-4">
-          <AuthInput
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              // Removed redundant validate() call here as it runs on submit
-            }}
-            placeholder="••••••••"
-            icon={Lock}
-          />
-          {errors.password && (
-            <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-          )}
-        </div>
+        <AuthInput
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••"
+          icon={Lock}
+        />
+        {errors.password && (
+          <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+        )}
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 mt-2 bg-red-500 hover:bg-red-700 text-white rounded-lg font-semibold transition disabled:opacity-50 flex items-center justify-center"
+          className="w-full py-3 mt-2 bg-red-500 hover:bg-red-700 text-white rounded-lg font-semibold transition flex items-center justify-center disabled:opacity-50"
         >
           {loading ? (
-            <div className="animate-spin h-5 w-5 border-[3px] border-white border-t-transparent rounded-full"></div>
+            <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
           ) : (
             <>
               <LogIn className="w-5 h-5 mr-2" />
@@ -137,8 +179,8 @@ const LoginForm = () => {
       <p className="text-black-600 text-center mt-4 text-sm">
         Don't have an account?{" "}
         <span
-          onClick={() => navigate("/registration")}
           className="text-red-500 hover:underline cursor-pointer"
+          onClick={() => navigate("/registration")}
         >
           Sign up
         </span>
