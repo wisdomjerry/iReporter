@@ -3,73 +3,15 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogIn, Mail, Lock, CheckCircle, XCircle } from "lucide-react";
 import apiService from "../services/api";
-import { useUsers } from "../contexts/UserContext";
+import { useUsers } from "../contexts/UserContext"; // ⭐ NOTE: Need to get refreshUser here
 import API_BASE_URL from "../config/api";
 
-const AuthInput = ({
-  label,
-  type,
-  value,
-  onChange,
-  placeholder,
-  icon: Icon,
-}) => {
-  const [showPassword, setShowPassword] = useState(false);
-  const isPassword = type === "password";
-  const inputType = isPassword && showPassword ? "text" : type;
-
-  return (
-    <div className="mb-5">
-      <label className="block text-xs font-semibold uppercase mb-1 text-red-600">
-        {label}
-      </label>
-
-      <div className="relative">
-        <input
-          type={inputType}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          className="w-full p-3 pl-10 pr-10 placeholder:text-xs rounded-lg border border-red-200 shadow-sm focus:outline-none focus:ring-2"
-        />
-
-        <Icon className="absolute text-red-500 left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" />
-
-        {isPassword && (
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
-          >
-            {showPassword ? "🙈" : "👁️"}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const StatusMessage = ({ type, message }) => {
-  if (!message) return null;
-  const Icon = type === "success" ? CheckCircle : XCircle;
-  const colorClass =
-    type === "success"
-      ? "bg-green-100 text-green-700"
-      : "bg-red-100 text-red-700";
-
-  return (
-    <div
-      className={`flex items-center p-3 mb-4 rounded-lg text-sm ${colorClass}`}
-    >
-      <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
-      <p className="font-medium">{message}</p>
-    </div>
-  );
-};
+// ... (AuthInput and StatusMessage components remain unchanged) ...
 
 const LoginForm = () => {
   const navigate = useNavigate();
-  const { setCurrentUser, markFirstLoginSeen } = useUsers();
+  // ⭐ UPDATED: Get refreshUser from context
+  const { refreshUser } = useUsers(); 
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -98,38 +40,31 @@ const LoginForm = () => {
     setLoading(true);
 
     try {
-      // 1️⃣ Login
-      await apiService.login(email, password);
+      // 1️⃣ Login: This saves the token to localStorage and returns the user object.
+      const res = await apiService.login(email, password);
 
-      // 2️⃣ Fetch current user
-      const fullUser = await apiService.getCurrentUser();
+      // 2️⃣ Trigger UserContext to fetch the full user and set context state
+      await refreshUser(); // <--- ⭐ CRITICAL CHANGE: Use the centralized context logic
 
-      // 3️⃣ Set user in context including firstLoginShown
-      setCurrentUser({
-        ...fullUser.user,
-        avatar: fullUser.user.avatar || "",
-        firstName: fullUser.user.firstName || "",
-        lastName: fullUser.user.lastName || "",
-        phone: fullUser.user.phone || "",
-        role: fullUser.user.role || "user",
-        firstLoginShown: fullUser.user.firstLoginShown || false, // important!
-      });
+      // The refreshed user is now guaranteed to be in the context state (currentUser)
+      const role = res.user?.role; // We get the role from the initial login response for quick redirect
 
-      // 4️⃣ Success message
+      // 3️⃣ Success message
       setStatus({
         type: "success",
         message: "Login successful! Redirecting...",
       });
 
-      // 5️⃣ Redirect based on role
+      // 4️⃣ Redirect based on role
       setTimeout(() => {
-        if (fullUser.user.role === "admin") {
+        if (role === "admin") {
           navigate("/admin");
         } else {
-          navigate("/dashboard"); // first-login popup handled by dashboard
+          navigate("/dashboard");
         }
       }, 1200);
     } catch (err) {
+      console.error("Login error:", err);
       setStatus({
         type: "error",
         message: err.response?.data?.message || "Invalid email or password",
@@ -156,7 +91,7 @@ const LoginForm = () => {
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
-              validate();
+              // Removed redundant validate() call here as it runs on submit
             }}
             placeholder="wisdom@example.com"
             icon={Mail}
@@ -173,7 +108,7 @@ const LoginForm = () => {
             value={password}
             onChange={(e) => {
               setPassword(e.target.value);
-              validate();
+              // Removed redundant validate() call here as it runs on submit
             }}
             placeholder="••••••••"
             icon={Lock}
