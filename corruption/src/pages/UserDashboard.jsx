@@ -94,6 +94,7 @@ const Dashboard = () => {
   const [editingReport, setEditingReport] = useState(null);
 
   const [isUserLoaded, setIsUserLoaded] = useState(false);
+  const [showFirstPopupLocal, setShowFirstPopupLocal] = useState(false);
 
   const navigate = useNavigate();
 
@@ -104,19 +105,23 @@ const Dashboard = () => {
     }
   }, [currentUser]);
 
-  // Show popup ONLY when user is loaded
-  const showFirstPopup =
-    isUserLoaded && currentUser?.firstLoginShown === false && !stepperOpen;
+  // Show first login popup using local state
+  useEffect(() => {
+    if (isUserLoaded && currentUser?.firstLoginShown === false) {
+      setShowFirstPopupLocal(true);
+    }
+  }, [isUserLoaded, currentUser]);
 
+  // Handle first report addition from popup
   const handleFirstReportAdded = async () => {
     try {
-      // Mark user seen BEFORE opening the stepper
-      await markFirstLoginSeen();
-
-      // Now safely open stepper
+      setShowFirstPopupLocal(false); // close popup locally
       setDefaultReportType("Red Flag");
       setEditingReport(null);
       setStepperOpen(true);
+
+      // mark in backend
+      await markFirstLoginSeen();
     } catch (err) {
       console.error("Failed to mark first login:", err);
     }
@@ -145,7 +150,7 @@ const Dashboard = () => {
   return (
     <div className="m-0 bg-gray-50 min-h-screen relative p-4 pt-20">
       {/* FIRST LOGIN POPUP */}
-      {showFirstPopup && (
+      {showFirstPopupLocal && (
         <FirstLoginPopup onAddReport={handleFirstReportAdded} />
       )}
 
