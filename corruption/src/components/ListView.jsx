@@ -7,37 +7,66 @@ import toast, { Toaster } from "react-hot-toast";
 
 // --- Reusable Status Component ---
 const StatusDisplay = ({ status, onChange }) => {
-  const normalized = status?.toLowerCase() || "pending";
+  const normalize = (s) => s?.toLowerCase().replace(/\s+/g, "-") || "pending";
+
+  const normalized = normalize(status);
 
   const getStatusStyle = (status) => {
     switch (status) {
-      case "resolved":
-        return { bg: "bg-green-100", text: "text-green-800" };
-      case "under investigation":
-        return { bg: "bg-yellow-100", text: "text-yellow-800" };
-      case "rejected":
-        return { bg: "bg-red-100", text: "text-red-800" };
       case "pending":
+        return {
+          bg: "bg-pink-100",
+          text: "text-pink-700",
+          ring: "focus:ring-pink-300",
+        };
+      case "resolved":
+        return {
+          bg: "bg-green-100",
+          text: "text-green-700",
+          ring: "focus:ring-green-300",
+        };
+      case "rejected":
+        return {
+          bg: "bg-red-100",
+          text: "text-red-700",
+          ring: "focus:ring-red-300",
+        };
+      case "under-investigation":
+        return {
+          bg: "bg-yellow-100",
+          text: "text-yellow-700",
+          ring: "focus:ring-yellow-300",
+        };
       default:
-        return { bg: "bg-blue-100", text: "text-blue-800" };
+        return {
+          bg: "bg-gray-100",
+          text: "text-gray-700",
+          ring: "focus:ring-gray-300",
+        };
     }
   };
 
   const style = getStatusStyle(normalized);
-  const statuses = ["pending", "under investigation", "resolved", "rejected"];
+
+  const statuses = ["pending", "under-investigation", "resolved", "rejected"];
 
   if (onChange) {
     return (
       <select
         value={normalized}
         onChange={(e) => onChange(e.target.value)}
-        className={`text-xs font-semibold rounded-full px-3 py-1 border focus:outline-none focus:ring-2 ${style.bg} ${style.text}`}
+        className={`text-xs font-semibold rounded-full px-3 py-1 border focus:outline-none focus:ring-2 ${style.bg} ${style.text} ${style.ring} shadow-sm cursor-pointer`}
       >
-        {statuses.map((s) => {
-          const st = getStatusStyle(s);
+        {statuses.map((status) => {
+          const st = getStatusStyle(status);
           return (
-            <option key={s} value={s} className={`${st.bg} ${st.text}`}>
-              {s.charAt(0).toUpperCase() + s.slice(1)}
+            <option
+              key={status}
+              value={status}
+              className={`${st.bg} ${st.text}`}
+            >
+              {status.charAt(0).toUpperCase() +
+                status.slice(1).replace("-", " ")}
             </option>
           );
         })}
@@ -49,7 +78,8 @@ const StatusDisplay = ({ status, onChange }) => {
     <span
       className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${style.bg} ${style.text}`}
     >
-      {normalized.charAt(0).toUpperCase() + normalized.slice(1)}
+      {normalized.charAt(0).toUpperCase() +
+        normalized.slice(1).replace("-", " ")}
     </span>
   );
 };
@@ -134,15 +164,15 @@ const ListView = ({
   const handleStatusChange = async (reportId, newStatus, userId) => {
     try {
       await onStatusChange(reportId, newStatus, userId);
+
       setLocalReports((prev) =>
-        prev.map((report) =>
-          report.id === reportId ? { ...report, status: newStatus } : report
-        )
+        prev.map((r) => (r.id === reportId ? { ...r, status: newStatus } : r))
       );
-      toast.success("Status updated", { duration: 2000 });
+
+      toast.success(`Status updated to "${newStatus}"`);
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to update status", { duration: 2000 });
+      console.error("ListView Status Update Error:", err);
+      toast.error("Failed to update status");
     }
   };
 
@@ -325,14 +355,22 @@ const ListView = ({
                   onChange={
                     role === "admin"
                       ? (newStatus) =>
-                          handleStatusChange(report.id, newStatus, report.user?.id)
+                          handleStatusChange(
+                            report.id,
+                            newStatus,
+                            report.user?.id
+                          )
                       : null
                   }
                 />
               </div>
               <div className="flex justify-between">
                 <span className="font-medium">Created:</span>
-                <span>{moment(report.created_at || Date.now()).format("MMM D, YYYY")}</span>
+                <span>
+                  {moment(report.created_at || Date.now()).format(
+                    "MMM D, YYYY"
+                  )}
+                </span>
               </div>
               {role !== "admin" && (
                 <div className="flex justify-end space-x-2 pt-2">
