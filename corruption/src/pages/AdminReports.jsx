@@ -28,7 +28,7 @@ const AdminReports = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 pt-20 bg-gray-50 min-h-screen">
       <div className="flex flex-wrap justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">All Reports (Admin)</h1>
 
