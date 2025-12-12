@@ -1,10 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, MapPin, Camera, Bell, FileText, Users } from "lucide-react";
-
 const LandingPage = () => {
   const navigate = useNavigate();
-
   const features = [
     {
       icon: <FileText className="w-8 h-8" />,
@@ -37,7 +35,6 @@ const LandingPage = () => {
       description: "Your reports are secure and you can choose to remain anonymous while still tracking progress."
     }
   ];
-
   const steps = [
     {
       number: "1",
@@ -55,13 +52,12 @@ const LandingPage = () => {
       description: "Monitor the status of your reports and receive notifications when actions are taken."
     }
   ];
-
   return (
     <div className="min-h-screen bg-white font-sans">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-50">
         <nav className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
-          <h1 
+          <h1
             className="text-2xl font-bold text-red-600 cursor-pointer"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
@@ -83,7 +79,6 @@ const LandingPage = () => {
           </div>
         </nav>
       </header>
-
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-red-50 to-white py-20">
         <div className="max-w-7xl mx-auto px-6">
@@ -93,7 +88,7 @@ const LandingPage = () => {
                 Report Corruption.<br />Demand Action.
               </h2>
               <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-                iReporter empowers citizens to report corruption incidents and request government interventions 
+                iReporter empowers citizens to report corruption incidents and request government interventions
                 for infrastructure issues. Make your voice heard and drive positive change in your community.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
@@ -112,16 +107,15 @@ const LandingPage = () => {
               </div>
             </div>
             <div className="flex-1 flex justify-center">
-              <img 
-                src="https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?ixlib=rb-4.1.0&auto=format&fit=crop&w=1000&q=80" 
-                alt="Citizen Reporting" 
+              <img
+                src="https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?ixlib=rb-4.1.0&auto=format&fit=crop&w=1000&q=80"
+                alt="Citizen Reporting"
                 className="rounded-2xl shadow-2xl max-w-full h-auto"
               />
             </div>
           </div>
         </div>
       </section>
-
       {/* Features Section */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-6">
@@ -134,10 +128,9 @@ const LandingPage = () => {
               Our platform provides comprehensive tools to report incidents, track progress, and ensure accountability.
             </p>
           </div>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <div 
+              <div
                 key={index}
                 className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition duration-300 border border-gray-100"
               >
@@ -155,7 +148,6 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
-
       {/* How It Works Section */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-6">
@@ -167,10 +159,9 @@ const LandingPage = () => {
               Simple steps to make a difference in your community
             </p>
           </div>
-          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {steps.map((step, index) => (
-              <div 
+              <div
                 key={index}
                 className="text-center"
               >
@@ -188,7 +179,6 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
-
       {/* CTA Section */}
       <section className="py-20 bg-red-600">
         <div className="max-w-4xl mx-auto px-6 text-center">
@@ -206,7 +196,6 @@ const LandingPage = () => {
           </button>
         </div>
       </section>
-
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-6">
@@ -218,7 +207,6 @@ const LandingPage = () => {
                 Empowering citizens to report corruption and demand government accountability.
               </p>
             </div>
-
             {/* Platform */}
             <div className="space-y-3">
               <h5 className="font-semibold text-white">Platform</h5>
@@ -228,7 +216,6 @@ const LandingPage = () => {
                 <li className="hover:text-white cursor-pointer transition">Security</li>
               </ul>
             </div>
-
             {/* Support */}
             <div className="space-y-3">
               <h5 className="font-semibold text-white">Support</h5>
@@ -238,7 +225,6 @@ const LandingPage = () => {
                 <li className="hover:text-white cursor-pointer transition">Community</li>
               </ul>
             </div>
-
             {/* Legal */}
             <div className="space-y-3">
               <h5 className="font-semibold text-white">Legal</h5>
@@ -249,7 +235,6 @@ const LandingPage = () => {
               </ul>
             </div>
           </div>
-
           <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
             <p>&copy; 2025 iReporter. All rights reserved.</p>
           </div>
@@ -258,5 +243,4 @@ const LandingPage = () => {
     </div>
   );
 };
-
 export default LandingPage;

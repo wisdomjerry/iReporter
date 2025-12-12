@@ -83,8 +83,14 @@ input[type="date"] {
 }
 
 body {
-  background-color: #211e2f;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #ffffff !important;
 }
+
+
+
+
 
 .sidebar-gradient {
   background: linear-gradient(135deg, #6c4b9d 0%, #30264d 100%);
