@@ -16,9 +16,6 @@ import { useNotifications } from "../contexts/NotificationContext";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import apiService from "../services/api";
-
-
-
 // ───── STAT CARD ───── (Remains unchanged)
 const StatCard = ({ title, value, icon: Icon, color }) => {
   const colorClasses = {
@@ -40,7 +37,6 @@ const StatCard = ({ title, value, icon: Icon, color }) => {
     </div>
   );
 };
-
 // ───── QUICK ACTIONS ───── (Remains unchanged)
 const QuickActions = ({ openStepper, setType }) => {
   const navigate = useNavigate();
@@ -49,7 +45,6 @@ const QuickActions = ({ openStepper, setType }) => {
     { label: "Add Intervention", icon: Zap, className: "bg-teal-500 hover:bg-teal-700 text-white", type: "Intervention" },
     { label: "View All Reports", icon: CheckCircle, className: "bg-gray-100 hover:bg-gray-200 text-gray-800", type: "view" },
   ];
-
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
       <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
@@ -70,23 +65,18 @@ const QuickActions = ({ openStepper, setType }) => {
     </div>
   );
 };
-
 // ───── USER DASHBOARD ─────
 // FIX 1: Removed the isSidebarCollapsed prop from the component signature
-const Dashboard = () => { 
-    const navigate = useNavigate(); 
+const Dashboard = () => {
+    const navigate = useNavigate();
   const { currentUser, setCurrentUser } = useUsers();
   const { reports, updateReport, deleteReport } = useReports();
   const { notifications, markAsRead, markAllAsRead } = useNotifications();
-
   const [stats, setStats] = React.useState({});
   const [stepperOpen, setStepperOpen] = React.useState(false);
   const [defaultReportType, setDefaultReportType] = React.useState("");
   const [editingReport, setEditingReport] = React.useState(null);
   const [showFirstPopup, setShowFirstPopup] = React.useState(false);
-
-
-
   // First login popup (unchanged)
   React.useEffect(() => {
     if (!currentUser) return;
@@ -94,7 +84,6 @@ const Dashboard = () => {
       setTimeout(() => setShowFirstPopup(true), 300);
     }
   }, [currentUser]);
-
   const markFirstLoginShown = async () => {
     try {
       await apiService.put(`/users/${currentUser.id}/first-login-shown`, { firstLoginShown: 1 });
@@ -103,7 +92,6 @@ const Dashboard = () => {
       console.error("Failed to update firstLoginShown:", err);
     }
   };
-
   // Update stats whenever reports change (unchanged)
   React.useEffect(() => {
     if (!reports) return;
@@ -118,7 +106,6 @@ const Dashboard = () => {
       interventions: reports.filter((r) => r.type === "intervention").length,
     });
   }, [reports]);
-
   // Notification handlers (unchanged)
   const handleMarkRead = async (id) => {
     try {
@@ -129,7 +116,6 @@ const Dashboard = () => {
       toast.error("Failed to mark notification as read");
     }
   };
-
   const handleMarkAllRead = async () => {
     try {
       await markAllAsRead();
@@ -139,12 +125,10 @@ const Dashboard = () => {
       toast.error("Failed to mark all notifications as read");
     }
   };
-
   // FIX 2: Removed dynamic margin logic and pt-24/md:pt-4 from the return block.
   return (
     // Only retains standard wrapper classes. Top spacing (pt-20) is handled by DashboardLayout's <main> element.
-    <div className="m-0 bg-gray-50 min-h-screen relative p-4 pt-20"> 
-    
+    <div className="m-0 bg-gray-50 min-h-screen relative p-4 pt-20">
       {/* FIRST LOGIN POPUP (unchanged) */}
       {showFirstPopup && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -162,15 +146,13 @@ const Dashboard = () => {
           />
         </div>
       )}
-
       {/* Content wrapper must use padding for inner layout */}
-      <div className="p-4"> 
+      <div className="p-4">
         {/* HEADER (This is the local header, which should now clear the fixed Header) */}
         <header className="mb-8">
           <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
           <p className="text-gray-500 mt-1">Welcome back, {currentUser?.firstName}!</p>
         </header>
-
         {/* STATS GRID (unchanged) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
           {[
@@ -184,7 +166,6 @@ const Dashboard = () => {
             <StatCard key={i} {...s} />
           ))}
         </div>
-
         {/* REPORTS + QUICK ACTIONS + NOTIFICATIONS (unchanged) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
@@ -202,13 +183,11 @@ const Dashboard = () => {
               loading={false}
             />
           </div>
-
           <div className="space-y-6">
             <QuickActions
               openStepper={() => setStepperOpen(true)}
               setType={setDefaultReportType}
             />
-
             {/* RECENT NOTIFICATIONS (unchanged) */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <div className="flex justify-between items-center mb-3">
@@ -222,7 +201,6 @@ const Dashboard = () => {
                   </button>
                 )}
               </div>
-
               {notifications && notifications.length > 0 ? (
                 <ul className="space-y-2 max-h-64 overflow-y-auto">
                   {notifications.slice(0, 5).map((n) => (
@@ -260,8 +238,6 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-
-
       {/* REPORT STEPPER MODAL (unchanged) */}
       {stepperOpen && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center p-4 overflow-auto">
@@ -280,7 +256,6 @@ const Dashboard = () => {
                 setEditingReport(null);
               }}
               onReportAdded={() => toast.success("Report added!")}
-              
             />
           </div>
         </div>
@@ -288,5 +263,11 @@ const Dashboard = () => {
     </div>
   );
 };
-
 export default Dashboard;
+
+
+
+
+
+
+
