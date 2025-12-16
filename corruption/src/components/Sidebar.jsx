@@ -25,10 +25,6 @@ const Sidebar = ({ isCollapsed, toggleCollapse }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const toggleMobile = () => setMobileOpen(!mobileOpen);
 
-  // FIX 3: Remove local isCollapsed state and toggleCollapse function
-  // const [isCollapsed, setIsCollapsed] = useState(false);
-  // const toggleCollapse = () => setIsCollapsed((prev) => !prev);
-
   // --- Styling Classes ---
 
   const inactiveLinkClass = "text-gray-700 hover:bg-gray-100";
@@ -59,10 +55,9 @@ const Sidebar = ({ isCollapsed, toggleCollapse }) => {
   );
 
   const SidebarContent = (
-    // FIX 5: Remove redundant w-64/w-20 from this inner div, as the outer <aside> controls it.
     // However, since mobile sidebar uses this content, we must keep it flexible or redefine the mobile sidebar div.
     <div
-      className={`flex flex-col h-full bg-white text-gray-800 w-full`} // Set inner content to w-full of its container
+      className={`flex flex-col h-full bg-white text-gray-800 w-full`} 
     >
       {/* Logo/Header Area */}
       <div

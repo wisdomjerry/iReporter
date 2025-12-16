@@ -1,4 +1,4 @@
-import React, { useState } from "react"; // 1. Import useState
+import React, { useState } from "react"; 
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import { Outlet } from "react-router-dom";
@@ -30,10 +30,7 @@ const DashboardLayout = () => {
         {/* 4. Pass collapse state to Header */}
         <Header 
           isSidebarCollapsed={isCollapsed}
-          // Assuming the Sidebar component handles its own mobile state,
-          // but if the Header needs to trigger the *mobile* sidebar open, 
-          // you would need to lift the 'mobileOpen' state here too. 
-          // For now, we focus on desktop collapse.
+          
         />
 
         {/* 5. Main content container: Remove mt-16 as content components handle spacing from fixed header */}
