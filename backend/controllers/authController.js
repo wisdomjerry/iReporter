@@ -7,9 +7,9 @@ const supabase = require("../supabaseClient");
 const setTokenCookie = (res, token) => {
   res.cookie("token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production", // false on localhost
-    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-    maxAge: 24 * 60 * 60 * 1000, // 1 day
+    secure: true,
+    sameSite: "None",
+    maxAge: 24 * 60 * 60 * 1000,
   });
 };
 
@@ -29,7 +29,8 @@ const registerUser = async (req, res) => {
       .eq("email", email)
       .single();
 
-    if (existing) return res.status(400).json({ error: "Email already exists" });
+    if (existing)
+      return res.status(400).json({ error: "Email already exists" });
     if (selectError && selectError.code !== "PGRST116")
       return res.status(500).json({ error: selectError.message });
 
@@ -52,11 +53,16 @@ const registerUser = async (req, res) => {
       .select()
       .single();
 
-    if (insertError) return res.status(500).json({ error: insertError.message });
+    if (insertError)
+      return res.status(500).json({ error: insertError.message });
 
     // Generate JWT & set cookie
     const token = jwt.sign(
-      { id: insertedUser.id, email: insertedUser.email, role: insertedUser.role },
+      {
+        id: insertedUser.id,
+        email: insertedUser.email,
+        role: insertedUser.role,
+      },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
@@ -152,16 +158,16 @@ const loginUser = async (req, res) => {
   }
 };
 
-
 // ==========================
 // LOGOUT USER
 // ==========================
 const logoutUser = (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    secure: true,
+    sameSite: "None",
   });
+
   res.json({ message: "Logged out successfully" });
 };
 
@@ -171,7 +177,10 @@ const logoutUser = (req, res) => {
 const markFirstLoginSeen = async (req, res) => {
   if (!req.user?.id) return res.status(401).json({ error: "Unauthorized" });
   try {
-    await supabase.from("users").update({ firstLoginShown: true }).eq("id", req.user.id);
+    await supabase
+      .from("users")
+      .update({ firstLoginShown: true })
+      .eq("id", req.user.id);
     res.json({ success: true, message: "First login popup marked as seen" });
   } catch (err) {
     console.error("FIRST LOGIN SEEN ERROR:", err);
@@ -194,7 +203,9 @@ const getCurrentUser = async (req, res) => {
   try {
     const { data: u, error } = await supabase
       .from("users")
-      .select("id, first_name, last_name, email, phone, role, avatar, firstLoginShown")
+      .select(
+        "id, first_name, last_name, email, phone, role, avatar, firstLoginShown"
+      )
       .eq("id", req.user.id)
       .maybeSingle();
 
@@ -226,7 +237,6 @@ const getCurrentUser = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
-
 
 module.exports = {
   registerUser,

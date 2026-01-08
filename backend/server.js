@@ -30,6 +30,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
   "https://ireporter-phi.vercel.app",
+  "https://ireporter-xafr.onrender.com",
 ];
 
 app.use(
