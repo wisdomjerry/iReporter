@@ -6,94 +6,85 @@ const REPORTS_URL = "/reports";
 const USERS_URL = "/users";
 const NOTIFICATIONS_URL = "/notifications";
 
-// Axios instance
+// ─── Axios instance ───────────────────────────────
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true, // REQUIRED for cookies
 });
 
-// Attach token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
+// ─── Generic helpers ──────────────────────────────
 const apiService = {
-  // --- Generic helpers ---
   get: async (url, params) => (await api.get(url, { params })).data,
   post: async (url, data) => (await api.post(url, data)).data,
   put: async (url, data) => (await api.put(url, data)).data,
   patch: async (url, data) => (await api.patch(url, data)).data,
   delete: async (url) => (await api.delete(url)).data,
 
-  // --- Auth ---
-  register: (userData) => apiService.post(`${AUTH_URL}/register`, userData),
-  login: async (email, password) => {
-    const res = await apiService.post(`${AUTH_URL}/login`, { email, password });
-    if (res.token) localStorage.setItem("token", res.token);
-    return res;
-  },
-  getCurrentUser: () => apiService.get(`${AUTH_URL}/me`),
-  logout: async () => {
-    localStorage.removeItem("token");
-    return { message: "Logged out" };
-  },
-  markFirstLoginShown: () => apiService.put(`${AUTH_URL}/first-login-seen`),
+  // ─── AUTH ───────────────────────────────────────
+  register: (userData) =>
+    api.post(`${AUTH_URL}/register`, userData).then((res) => res.data),
 
-  // --- Reports ---
+  login: (email, password) =>
+    api.post(`${AUTH_URL}/login`, { email, password }).then((res) => res.data),
+
+  getCurrentUser: () =>
+    api.get(`${AUTH_URL}/me`).then((res) => res.data),
+
+  logout: () =>
+    api.post(`${AUTH_URL}/logout`).then((res) => res.data),
+
+  // ✅ CORRECT first login update
+  markFirstLoginShown: () =>
+    api.put(`${USERS_URL}/first-login-shown`).then((res) => res.data),
+
+  // ─── REPORTS ────────────────────────────────────
   getReports: (userId, options = {}) => {
-    let url = `${REPORTS_URL}`;
+    let url = REPORTS_URL;
     if (userId) url += `?userId=${userId}`;
     if (options.minimal) url += userId ? "&minimal=true" : "?minimal=true";
     return apiService.get(url);
   },
+
   createReport: (data) => apiService.post(REPORTS_URL, data),
-  updateReport: (id, data) => apiService.put(`${REPORTS_URL}/${id}`, data),
+  updateReport: (id, data) =>
+    apiService.put(`${REPORTS_URL}/${id}`, data),
+
   updateReportStatus: (id, status) =>
     apiService.put(`${REPORTS_URL}/${id}/status`, { status }),
-  deleteReport: (id) => apiService.delete(`${REPORTS_URL}/${id}`),
 
-  // --- Users ---
+  deleteReport: (id) =>
+    apiService.delete(`${REPORTS_URL}/${id}`),
+
+  // ─── USERS / PROFILE ────────────────────────────
   getUsers: () => apiService.get(USERS_URL),
 
-  // --- Profile (new endpoints) ---
-  getProfile: () => apiService.get(`${USERS_URL}/profile`),
+  getProfile: () =>
+    apiService.get(`${USERS_URL}/profile`),
+
+  // ✅ DO NOT set Content-Type manually
   updateProfile: (formData) =>
-    api.put(`${USERS_URL}/profile`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    }),
+    api.put(`${USERS_URL}/profile`, formData),
 
   changePassword: (currentPassword, newPassword) =>
-    apiService.put(`${USERS_URL}/password`, { currentPassword, newPassword }),
+    apiService.put(`${USERS_URL}/password`, {
+      currentPassword,
+      newPassword,
+    }),
 
-  // --- Notifications ---
+  // ─── NOTIFICATIONS ──────────────────────────────
   getNotifications: async () => {
-    const res = await api.get(NOTIFICATIONS_URL); // GET /notifications
-    return res.data.notifications; // return the array directly
-  },
-  createNotification: (data) => apiService.post(NOTIFICATIONS_URL, data),
-  markNotificationRead: (id) =>
-    apiService.put(`${NOTIFICATIONS_URL}/${id}/read`), // use PUT for marking single
-  markAllNotificationsRead: () =>
-    apiService.put(`${NOTIFICATIONS_URL}/mark-all-read`), // new endpoint
-  deleteNotification: (id) => apiService.delete(`${NOTIFICATIONS_URL}/${id}`),
-  deleteAllNotifications: async () => {
-    const all = await apiService.get(NOTIFICATIONS_URL);
-    await Promise.all(
-      all.notifications.map((n) =>
-        apiService.delete(`${NOTIFICATIONS_URL}/${n.id}`)
-      )
-    );
-    return { success: true };
+    const res = await api.get(NOTIFICATIONS_URL);
+    return res.data.notifications;
   },
 
-  // --- Onboarding ---
-  getOnboardingStatus: () => apiService.get(`${AUTH_URL}/onboarding-status`),
-  updateOnboardingStatus: () =>
-    apiService.patch(`${AUTH_URL}/first-login-seen`, { onboardingShown: true }),
+  markNotificationRead: (id) =>
+    apiService.put(`${NOTIFICATIONS_URL}/${id}/read`),
+
+  markAllNotificationsRead: () =>
+    apiService.put(`${NOTIFICATIONS_URL}/mark-all-read`),
+
+  deleteNotification: (id) =>
+    apiService.delete(`${NOTIFICATIONS_URL}/${id}`),
 };
 
 export default apiService;

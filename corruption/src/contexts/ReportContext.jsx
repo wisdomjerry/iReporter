@@ -36,15 +36,15 @@ export const ReportProvider = ({ children }) => {
         notificationsPromise,
       ]);
       const reportsArray = Array.isArray(reportsData)
-  ? reportsData
-  : reportsData?.reports || reportsData?.data || [];
-const formattedReports = reportsArray.map((r) => ({
-  ...r,
-  type: normalizeType(r.type),
-  status: normalizeStatus(r.status),
-  lat: r.lat ? Number(r.lat) : null,
-  lng: r.lng ? Number(r.lng) : null,
-}));
+        ? reportsData
+        : reportsData?.reports || reportsData?.data || [];
+      const formattedReports = reportsArray.map((r) => ({
+        ...r,
+        type: normalizeType(r.type),
+        status: normalizeStatus(r.status),
+        lat: r.lat ? Number(r.lat) : null,
+        lng: r.lng ? Number(r.lng) : null,
+      }));
       setReports(formattedReports);
       setLocations(
         formattedReports
@@ -239,6 +239,32 @@ const formattedReports = reportsArray.map((r) => ({
       return null;
     }
   };
+
+  // ─── REAL-TIME REPORT UPDATE (FROM SOCKET) ───
+  const updateReportRealtime = (incomingReport) => {
+    if (!incomingReport?.id) return;
+
+    const formattedReport = {
+      ...incomingReport,
+      type: normalizeType(incomingReport.type),
+      status: normalizeStatus(incomingReport.status),
+      lat: incomingReport.lat ? Number(incomingReport.lat) : null,
+      lng: incomingReport.lng ? Number(incomingReport.lng) : null,
+    };
+
+    setReports((prev) =>
+      (prev || []).map((r) =>
+        r.id === formattedReport.id ? { ...r, ...formattedReport } : r
+      )
+    );
+
+    setLocations((prev) =>
+      (prev || []).map((l) =>
+        l.id === formattedReport.id ? { ...l, ...formattedReport } : l
+      )
+    );
+  };
+
   return (
     <ReportContext.Provider
       value={{
@@ -253,16 +279,10 @@ const formattedReports = reportsArray.map((r) => ({
         updateReport,
         deleteReport,
         updateReportStatus,
+        updateReportRealtime,
       }}
     >
       {children}
     </ReportContext.Provider>
   );
 };
-
-
-
-
-
-
-

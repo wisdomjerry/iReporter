@@ -27,21 +27,24 @@ const Header = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
   }, []);
 
   // --- Unread notifications count ---
-  const unreadCount = (notifications || []).filter((n) => n.is_read === 0).length;
+  const unreadCount = (notifications || []).filter((n) => !n.is_read).length;
 
   const user = currentUser || { email: "", role: "user", firstName: "User" };
 
   return (
-    <header className={`fixed top-0 left-0 ${sidebarWidthClass} right-0 h-20 bg-white shadow-md flex items-center justify-between px-6 md:px-10 z-10 border-b border-gray-100 transition-[left] duration-300`}>
-      
+    <header
+      className={`fixed top-0 left-0 ${sidebarWidthClass} right-0 h-20 bg-white shadow-md flex items-center justify-between px-6 md:px-10 z-10 border-b border-gray-100 transition-[left] duration-300`}
+    >
       {/* Left: Menu */}
       <div className="flex items-center gap-4 flex-1">
-        <Menu className="w-6 h-6 text-gray-600 md:hidden cursor-pointer" onClick={toggleMobileSidebar} />
+        <Menu
+          className="w-6 h-6 text-gray-600 md:hidden cursor-pointer"
+          onClick={toggleMobileSidebar}
+        />
       </div>
 
       {/* Right: Notifications + User */}
       <div className="flex items-center gap-5 relative">
-        
         {/* Notifications */}
         <div className="relative">
           <button
@@ -58,7 +61,10 @@ const Header = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
               </span>
             )}
           </button>
-          <NotificationDropdown showNotifications={showNotifications} setShowNotifications={setShowNotifications} />
+          <NotificationDropdown
+            showNotifications={showNotifications}
+            setShowNotifications={setShowNotifications}
+          />
         </div>
 
         {/* User Menu */}
@@ -76,7 +82,11 @@ const Header = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
                   src={user.avatar}
                   alt="User Avatar"
                   className="w-full h-full object-cover rounded-full"
-                  onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/40x40/505050/FFFFFF?text=U'; }}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src =
+                      "https://placehold.co/40x40/505050/FFFFFF?text=U";
+                  }}
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-red-500 to-teal-700 flex items-center justify-center">
@@ -86,7 +96,9 @@ const Header = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
             </div>
 
             <div className="px-1 py-3 text-left hidden sm:block">
-              <p className="font-semibold text-gray-800">{user.firstName || "User"}</p>
+              <p className="font-semibold text-gray-800">
+                {user.firstName || "User"}
+              </p>
             </div>
             <ChevronDown className="w-4 h-4 text-gray-800" />
           </button>

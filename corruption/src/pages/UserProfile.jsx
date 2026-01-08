@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useUsers } from "../contexts/UserContext";
 import toast from "react-hot-toast";
-import { FiUser, FiLock, FiUpload } from "react-icons/fi";
+import { FiUser, FiLock, FiUpload, FiEye, FiEyeOff } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 
 const UserProfile = () => {
@@ -73,6 +73,19 @@ const UserProfile = () => {
       toast.error("Failed to update profile");
       console.error(err);
     }
+  };
+
+  const [showPassword, setShowPassword] = useState({
+    currentPassword: false,
+    newPassword: false,
+    confirmPassword: false,
+  });
+
+  const togglePasswordVisibility = (field) => {
+    setShowPassword((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
   };
 
   const handlePasswordChange = async (e) => {
@@ -247,7 +260,7 @@ const UserProfile = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {["currentPassword", "newPassword", "confirmPassword"].map(
                 (field) => (
-                  <div key={field}>
+                  <div key={field} className="relative">
                     <label className={labelClass}>
                       {field === "currentPassword"
                         ? "Current Password"
@@ -256,7 +269,7 @@ const UserProfile = () => {
                         : "Confirm New Password"}
                     </label>
                     <input
-                      type="password"
+                      type={showPassword[field] ? "text" : "password"}
                       name={field}
                       value={passwords[field]}
                       onChange={(e) =>
@@ -265,8 +278,15 @@ const UserProfile = () => {
                           [field]: e.target.value,
                         }))
                       }
-                      className={inputClass}
+                      className={`${inputClass} pr-10`} // add padding for icon
                     />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility(field)}
+                      className="absolute right-3 top-12 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword[field] ? <FiEyeOff /> : <FiEye />}
+                    </button>
                   </div>
                 )
               )}

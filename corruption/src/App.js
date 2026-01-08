@@ -14,12 +14,10 @@ import Login from "./pages/Login";
 import LandingPage from "./pages/LandingPage";
 import Registration from "./pages/Registration";
 import Notifications from "./pages/Notifications";
+import UserProfile from "./pages/UserProfile";
 import { useUsers } from "./contexts/UserContext";
 import { Toaster } from "react-hot-toast";
-import API_BASE_URL from "./config/api";
 import FirstLoginModal from "./components/FirstLoginPopup";
-import UserProfile from "./pages/UserProfile";
-
 
 function App() {
   const { currentUser, loading, showFirstLogin, markFirstLoginSeen } =
@@ -32,8 +30,6 @@ function App() {
       </div>
     );
   }
-
-  console.log("API Base URL:", API_BASE_URL);
 
   // --- Protected route ---
   const ProtectedRoute = ({ children, allowedRoles }) => {

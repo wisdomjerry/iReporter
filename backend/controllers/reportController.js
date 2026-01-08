@@ -1,167 +1,233 @@
 // controllers/reportController.js
-const db = require("../db");
+const db = require("../supabaseClient"); // Supabase client
 const sendEmail = require("../utils/sendEmail");
+const emitNotification = require("../utils/emitNotification");
 
-// --- CREATE REPORT ---
+/* ================= CREATE REPORT ================= */
 exports.createReport = async (req, res) => {
   try {
     const user = req.user;
-
-    // Ensure req.body exists (multer populates body in multipart/form-data)
-    const body = req.body || {};
     const {
-      title = "",
-      description = "",
-      location = "",
+      title,
+      description,
+      location,
       type = "general",
       lat,
       lng,
-    } = body;
+    } = req.body;
 
-    const status = "pending"; // default
-
-    if (!title.trim() || !description.trim() || !location.trim()) {
-      return res.status(400).json({
-        error: "Title, description, and location are required",
-      });
+    if (!title || !description || !location) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
     const parsedLat = parseFloat(lat) || 0;
     const parsedLng = parseFloat(lng) || 0;
 
-    // Handle multiple files from multer
     let mediaPaths = [];
-    if (Array.isArray(req.files) && req.files.length > 0) {
+    if (Array.isArray(req.files)) {
       mediaPaths = req.files.map(
-        (file) => `/uploads/${file.destination.split("/")[1]}/${file.filename}`
+        (f) => `/uploads/${f.destination.split("/")[1]}/${f.filename}`
       );
     }
 
-    // Insert report
-    const [result] = await db.query(
-      `INSERT INTO reports 
-        (user_id, title, description, type, status, location, lat, lng, media)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [user.id, title, description, type, status, location, parsedLat, parsedLng, JSON.stringify(mediaPaths)]
-    );
+    const {
+      data: [report],
+      error,
+    } = await db
+      .from("reports")
+      .insert([
+        {
+          user_id: user.id,
+          title,
+          description,
+          type,
+          status: "pending",
+          location,
+          lat: parsedLat,
+          lng: parsedLng,
+          media: JSON.stringify(mediaPaths),
+        },
+      ])
+      .select();
 
-    // Fetch inserted report
-    const [rows] = await db.query("SELECT * FROM reports WHERE id = ?", [result.insertId]);
-    const report = rows[0];
+    if (error) throw error;
+
     report.media = JSON.parse(report.media || "[]");
 
-    // Notify admin
-    const ADMIN_ID = 1;
-    const [userRow] = await db.query("SELECT first_name, last_name, email FROM users WHERE id = ?", [user.id]);
-    const firstName = userRow[0]?.first_name || "";
-    const lastName = userRow[0]?.last_name || "";
-    const email = userRow[0]?.email || "Unknown";
-    const displayName = firstName || lastName ? `${firstName} ${lastName}`.trim() : email;
+    const { data: admins } = await db
+      .from("users")
+      .select("id")
+      .eq("role", "admin");
 
-    const message = `New report created by ${displayName}: ${title}`;
+    const message = `📝 New report submitted: ${title}`;
+    const io = req.app.get("io");
 
-    await db.execute("INSERT INTO notifications (user_id, message) VALUES (?, ?)", [ADMIN_ID, message]);
+    for (const admin of admins || []) {
+      // DB + socket (ONCE)
+      await emitNotification(req, admin.id, message);
 
-    await sendEmail({
-      to: process.env.ADMIN_EMAIL || "wisdomjeremiah57@gmail.com",
-      subject: "New Report Created",
-      text: message,
-    });
+      io.to(String(admin.id)).emit("notification:new", {
+        type: "new-report",
+        message,
+        report,
+      });
+    }
 
-    return res.status(201).json({ message: "Report created successfully", report });
+    res.status(201).json({ message: "Report created", report });
   } catch (err) {
-    console.error("Create report error:", err);
-    return res.status(500).json({ error: "Server error" });
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
 };
 
-// --- GET ALL REPORTS ---
-exports.getAllReports = async (req, res) => {
+/* ================= GET ALL REPORTS ================= */
+exports.getAllReports = async (_, res) => {
   try {
-    const [rows] = await db.query(`
-      SELECT r.*, u.id as user_id, u.first_name, u.last_name, u.email
-      FROM reports r
-      JOIN users u ON r.user_id = u.id
-      ORDER BY r.created_at DESC
-    `);
+    const { data, error } = await db
+      .from("reports")
+      .select(
+        `
+        id,
+        title,
+        description,
+        type,
+        status,
+        location,
+        lat,
+        lng,
+        media,
+        created_at,
+        user_id,
+        users (
+          first_name,
+          last_name,
+          email
+        )
+      `
+      )
+      .order("created_at", { ascending: false });
 
-    rows.forEach(r => (r.media = r.media ? JSON.parse(r.media) : []));
-    const mappedRows = rows.map(r => ({
-      ...r,
-      createdBy: r.user_id,
-      userName: `${r.first_name} ${r.last_name}`.trim(),
-    }));
+    if (error) {
+      console.error("Supabase error:", error);
+      return res.status(500).json({ error: error.message });
+    }
 
-    res.json(mappedRows);
+    res.json(
+      (data || []).map((r) => ({
+        ...r,
+        media: r.media ? JSON.parse(r.media) : [],
+        userName: r.users
+          ? `${r.users.first_name} ${r.users.last_name}`.trim()
+          : "Unknown",
+      }))
+    );
   } catch (err) {
     console.error("Get all reports error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
 
-// --- GET USER REPORTS ---
+/* ================= GET USER REPORTS ================= */
 exports.getUserReports = async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM reports WHERE user_id = ? ORDER BY created_at DESC", [req.user.id]);
-    rows.forEach(r => (r.media = r.media ? JSON.parse(r.media) : []));
-    res.json(rows.map(r => ({ ...r, createdBy: r.user_id })));
+    const { data: rows, error } = await db
+      .from("reports")
+      .select("*, user:user_id(first_name, last_name, email)")
+      .eq("user_id", req.user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    const reports = (rows || []).map((r) => ({
+      ...r,
+      media: r.media ? JSON.parse(r.media) : [],
+      userName: r.user
+        ? `${r.user.first_name || ""} ${r.user.last_name || ""}`.trim() ||
+          r.user.email
+        : "Unknown",
+    }));
+
+    // Emit real-time update to the user
+    const io = req.app.get("io");
+    io.to(String(req.user.id)).emit("user-reports", { reports });
+
+    res.json(reports);
   } catch (err) {
     console.error("Get user reports error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
 
-// --- UPDATE REPORT STATUS ---
+/* ================= UPDATE REPORT STATUS ================= */
 exports.updateReportStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body || {};
+    const { status } = req.body;
 
-    if (!status) return res.status(400).json({ error: "Status field is required" });
     const allowed = ["pending", "under-investigation", "resolved", "rejected"];
-    if (!allowed.includes(status)) return res.status(400).json({ error: "Invalid status value" });
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
 
-    await db.query("UPDATE reports SET status = ? WHERE id = ?", [status, id]);
+    await db.from("reports").update({ status }).eq("id", id);
 
-    const [reportRows] = await db.query("SELECT * FROM reports WHERE id = ?", [id]);
-    const report = reportRows[0];
-    if (!report) return res.status(404).json({ error: "Report not found" });
+    const { data: report } = await db
+      .from("reports")
+      .select("*, user:user_id(first_name, last_name, email)")
+      .eq("id", id)
+      .single();
 
-    const [userRows] = await db.query("SELECT email, first_name, last_name FROM users WHERE id = ?", [report.user_id]);
-    if (!userRows?.length) return res.status(500).json({ error: "Report owner not found" });
+    const message = `Your report "${report.title}" is now "${status}"`;
 
-    const user = userRows[0];
-    const emailMessage = `Hello ${user.first_name} ${user.last_name}, your report "${report.title}" status has been updated to "${status}".`;
+    const io = req.app.get("io");
 
-    await db.execute("INSERT INTO notifications (user_id, message) VALUES (?, ?)", [report.user_id, emailMessage]);
+    await emitNotification(req, report.user_id, message);
 
-    sendEmail({
-      to: user.email,
-      subject: `Report Status Updated: ${report.title}`,
-      text: emailMessage,
-    }).catch(err => console.error("Error sending status update email:", err));
+    io.to(String(report.user_id)).emit("notification:new", {
+      type: "status-update",
+      message,
+      report,
+    });
 
-    res.json({ message: "Report status updated successfully" });
+    res.json({ message: "Status updated", report });
   } catch (err) {
-    console.error("Update report status error:", err);
+    console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 };
 
-// --- DELETE REPORT ---
+/* ================= DELETE REPORT ================= */
 exports.deleteReport = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
 
-    const [report] = await db.query("SELECT * FROM reports WHERE id = ?", [id]);
-    if (!report.length) return res.status(404).json({ error: "Report not found" });
-    if (userId !== report[0].user_id) return res.status(403).json({ error: "Unauthorized" });
+    const { data: report } = await db
+      .from("reports")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-    await db.query("DELETE FROM reports WHERE id = ?", [id]);
-    res.json({ message: "Report deleted successfully" });
+    if (!report || report.user_id !== req.user.id) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    await db.from("reports").delete().eq("id", id);
+
+    const message = `Your report "${report.title}" was deleted`;
+
+    const io = req.app.get("io");
+
+    await emitNotification(req, req.user.id, message);
+
+    io.to(String(req.user.id)).emit("notification:new", {
+      type: "report-deleted",
+      message,
+      reportId: id,
+    });
+
+    res.json({ message: "Report deleted" });
   } catch (err) {
-    console.error("Delete report error:", err);
+    console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 };

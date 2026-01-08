@@ -1,24 +1,36 @@
-const db = require("../db");
+// controllers/notificationController.js
+const db = require("../supabaseClient");
 
-// --- Get all notifications for the logged-in user ---
+/* -------------------- GET USER NOTIFICATIONS -------------------- */
 const getUserNotifications = async (req, res) => {
   try {
-    const [rows] = await db.execute(
-      "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC",
-      [req.user.id]
-    );
-    res.json({ notifications: rows });
+    const { data: notifications, error } = await db
+      .from("notifications")
+      .select("*")
+      .eq("user_id", req.user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    res.json({ notifications });
   } catch (err) {
     console.error("Fetch notifications error:", err);
     res.status(500).json({ error: "Failed to fetch notifications" });
   }
 };
 
-// --- Mark a notification as read ---
+/* -------------------- MARK ONE AS READ -------------------- */
 const markNotificationRead = async (req, res) => {
   try {
     const { id } = req.params;
-    await db.execute("UPDATE notifications SET is_read = 1 WHERE id = ?", [id]);
+
+    const { error } = await db
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("id", id);
+
+    if (error) throw error;
+
     res.json({ message: "Notification marked as read" });
   } catch (err) {
     console.error("Mark notification error:", err);
@@ -26,10 +38,16 @@ const markNotificationRead = async (req, res) => {
   }
 };
 
-// --- Mark all notifications as read for the logged-in user ---
+/* -------------------- MARK ALL AS READ -------------------- */
 const markAllNotificationsRead = async (req, res) => {
   try {
-    await db.execute("UPDATE notifications SET is_read = 1 WHERE user_id = ?", [req.user.id]);
+    const { error } = await db
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("user_id", req.user.id);
+
+    if (error) throw error;
+
     res.json({ message: "All notifications marked as read" });
   } catch (err) {
     console.error("Mark all notifications read error:", err);
@@ -37,12 +55,15 @@ const markAllNotificationsRead = async (req, res) => {
   }
 };
 
-
-// --- Delete a notification ---
+/* -------------------- DELETE NOTIFICATION -------------------- */
 const deleteNotification = async (req, res) => {
   try {
     const { id } = req.params;
-    await db.execute("DELETE FROM notifications WHERE id = ?", [id]);
+
+    const { error } = await db.from("notifications").delete().eq("id", id);
+
+    if (error) throw error;
+
     res.json({ message: "Notification deleted" });
   } catch (err) {
     console.error("Delete notification error:", err);
@@ -50,47 +71,53 @@ const deleteNotification = async (req, res) => {
   }
 };
 
-// --- Create a notification ---
+/* -------------------- CREATE & EMIT NOTIFICATION -------------------- */
+/*
+  BODY EXPECTED:
+  {
+    user_id: number,    // required
+    message: string     // required
+  }
+*/
 const createNotification = async (req, res) => {
   try {
-    console.log("Incoming notification payload:", req.body);
-
     const { user_id, message } = req.body;
 
     if (!user_id || !message) {
-      return res
-        .status(400)
-        .json({ error: "user_id and message are required" });
+      return res.status(400).json({ error: "user_id and message are required" });
     }
 
-    // 1️⃣ Save notification for the target user
-    const [result] = await db.execute(
-      "INSERT INTO notifications (user_id, message) VALUES (?, ?)",
-      [user_id, message]
-    );
+    // ✅ Check if user exists
+    const { data: user, error: userError } = await db
+      .from("users")
+      .select("id")
+      .eq("id", user_id)
+      .single();
 
-    // 2️⃣ Save a **copy** for all admins
-    const [admins] = await db.execute(
-      "SELECT id FROM users WHERE role = 'admin'"
-    );
-
-    for (const admin of admins) {
-      await db.execute(
-        "INSERT INTO notifications (user_id, message) VALUES (?, ?)",
-        [admin.id, `Sent to user ${user_id}: ${message}`]
-      );
+    if (userError) throw userError;
+    if (!user) {
+      return res.status(400).json({ error: `User with ID ${user_id} does not exist` });
     }
 
-    const [newNotification] = await db.execute(
-      "SELECT * FROM notifications WHERE id = ?",
-      [result.insertId]
-    );
+    const io = req.app.get("io");
 
-    console.log("Notification created:", newNotification[0]);
+    // 1️⃣ Save notification
+    const { data: [notification], error: insertError } = await db
+      .from("notifications")
+      .insert([{ user_id, message }])
+      .select();
+
+    if (insertError) throw insertError;
+
+    notification.is_read = notification.is_read || false;
+
+    // 2️⃣ REAL-TIME EMIT
+    io.to(String(user_id)).emit("notification:new", notification);
+    console.log("📡 Notification emitted to user:", user_id);
 
     res.status(201).json({
-      message: "Notification delivered, admin copies saved",
-      notification: newNotification[0],
+      message: "Notification sent successfully",
+      notification,
     });
   } catch (err) {
     console.error("Create notification error:", err);

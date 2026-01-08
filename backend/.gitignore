@@ -8,6 +8,9 @@ node_modules/
 .pnp.js
 
 
+insertAdmin.js/
+
+
 # -----------------------
 # Build output
 # -----------------------

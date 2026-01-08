@@ -4,9 +4,15 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const path = require("path");
 const fs = require("fs");
+const http = require("http");
+const { Server } = require("socket.io");
+
+// 🔹 Import Supabase-connected pool
+const supabase = require("./supabaseClient");
 
 dotenv.config();
 
+/* -------------------- Routes -------------------- */
 const authRoutes = require("./routes/auth");
 const reportRoutes = require("./routes/reportRoutes");
 const notificationRoutes = require("./routes/notifications");
@@ -14,66 +20,106 @@ const userRoutes = require("./routes/users");
 
 const app = express();
 
-// --- Ensure local upload directories exist for non-avatar files ---
+/* -------------------- Upload folders -------------------- */
 ["uploads/images", "uploads/videos", "uploads/others"].forEach((dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    console.log(`🟢 Created directory: ${dir}`);
-  }
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// --- CORS configuration ---
+/* -------------------- CORS -------------------- */
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://ireporter-phi.vercel.app",
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:3000",
-      "https://ireporter-phi.vercel.app",
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: allowedOrigins,
     credentials: true,
   })
 );
 
-// --- Body parsing ---
+/* -------------------- Middleware -------------------- */
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// --- Catch invalid JSON body ---
-app.use((err, req, res, next) => {
-  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid JSON format",
-    });
-  }
-  next();
-});
-
-// --- Cookie parser ---
 app.use(cookieParser());
-
-// --- Static folders for images/videos/other uploads ---
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// --- Routes ---
+/* -------------------- API Routes -------------------- */
 app.use("/api/auth", authRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/api/reports", reportRoutes); // Multer used inside reportRoutes
-app.use("/api/users", userRoutes);     // Cloudinary handled inside userRoutes
+app.use("/api/reports", reportRoutes);
+app.use("/api/users", userRoutes);
 
-// --- Test route ---
-app.get("/", (req, res) => {
-  res.send("API running... authentication + reports routes ready ✅");
+/* -------------------- Health check -------------------- */
+app.get("/", (_, res) => {
+  res.send("API running... Socket.IO ready ✅");
 });
 
-// --- Check SendGrid key ---
-console.log(
-  "SendGrid API Key Loaded:",
-  process.env.SENDGRID_API_KEY?.startsWith("SG.")
-);
+/* ==================== SOCKET.IO ==================== */
+const server = http.createServer(app);
 
-// --- Start server ---
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    credentials: true,
+  },
+  transports: ["polling", "websocket"],
+});
+
+// Utility to log all rooms and users
+const logActiveRooms = () => {
+  const rooms = Array.from(io.sockets.adapter.rooms.entries())
+    .filter(([room, sockets]) => !io.sockets.sockets.has(room)) // filter out individual sockets
+    .map(([room, sockets]) => ({ room, sockets: Array.from(sockets) }));
+  console.log("📡 Active Socket.IO rooms:", rooms);
+};
+
+io.on("connection", (socket) => {
+  console.log("🔌 Socket connected:", socket.id);
+
+  // Register user to a room
+  socket.on("register", (userId) => {
+    if (!userId) return;
+
+    const room = String(userId);
+    socket.join(room);
+
+    console.log(`🟢 User ${room} joined room (${socket.id})`);
+    logActiveRooms(); // Show all active rooms
+  });
+
+  socket.on("disconnect", () => {
+    console.log("🔴 Socket disconnected:", socket.id);
+    logActiveRooms(); // Show remaining active rooms
+  });
+});
+
+// Make io available in controllers
+app.set("io", io);
+
+/* -------------------- Supabase connection check -------------------- */
+(async () => {
+  const tables = ["users", "notifications", "reports"];
+
+  for (const table of tables) {
+    const { data, error } = await supabase.from(table).select("*").limit(1); // just fetch 1 row to test
+
+    if (error) {
+      console.error(
+        `❌ Supabase connection failed for table '${table}':`,
+        error.message
+      );
+    } else {
+      console.log(
+        `✅ Supabase connected successfully to '${table}', sample data:`,
+        data
+      );
+    }
+  }
+})();
+
+/* -------------------- Start server -------------------- */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
