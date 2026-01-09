@@ -70,8 +70,11 @@ const ReportStepper = ({
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
   const handleNext = () => {
-    if (isStepComplete(currentStep, formData)) nextStep();
-    else alert("Please complete all fields in this step before proceeding.");
+    if (isStepComplete(currentStep, formData)) {
+      nextStep();
+    } else {
+      toast.error("Please complete all fields in this step before proceeding.");
+    }
   };
 
   const handleSubmit = async () => {
@@ -98,7 +101,6 @@ const ReportStepper = ({
       // Use context function
       const savedReport = await createReport(payload);
 
-      
       if (reportToEdit) {
         // --- EDIT MODE ---
         savedReport = await updateReport(reportToEdit.id, payload); // call context update
