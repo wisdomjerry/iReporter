@@ -27,7 +27,9 @@ const Header = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
   }, []);
 
   // --- Unread notifications count ---
-  const unreadCount = (notifications || []).filter((n) => !n.is_read).length;
+  const unreadCount = (notifications || []).filter(
+    (n) => n.is_read !== 1 && n.is_read !== true
+  ).length;
 
   const user = currentUser || { email: "", role: "user", firstName: "User" };
 
@@ -55,12 +57,14 @@ const Header = ({ isSidebarCollapsed, toggleMobileSidebar }) => {
             className="relative p-2 rounded-full hover:bg-gray-100 transition"
           >
             <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-gray-800" />
+
             {unreadCount > 0 && (
-              <span className="absolute top-0 right-0 w-3 h-3 sm:w-4 sm:h-4 bg-red-500 text-white text-[0.55rem] sm:text-xs flex items-center justify-center rounded-full">
+              <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-[0.55rem] sm:text-xs flex items-center justify-center rounded-full font-bold">
                 {unreadCount}
               </span>
             )}
           </button>
+
           <NotificationDropdown
             showNotifications={showNotifications}
             setShowNotifications={setShowNotifications}

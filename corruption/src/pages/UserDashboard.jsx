@@ -1,13 +1,5 @@
 import React from "react";
-import {
-  CheckCircle,
-  Flag,
-  Zap,
-  Search,
-  XCircle,
-  Clock,
-  Bell,
-} from "lucide-react";
+import { CheckCircle, Flag, Zap, Search, XCircle, Clock } from "lucide-react";
 import { useReports } from "../contexts/ReportContext";
 import { useUsers } from "../contexts/UserContext";
 import { useNotifications } from "../contexts/NotificationContext";
@@ -63,6 +55,7 @@ const QuickActions = ({ openStepper, setType }) => {
       type: "view",
     },
   ];
+
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
       <h2 className="text-xl font-semibold text-gray-800 mb-4">
@@ -153,9 +146,8 @@ const Dashboard = () => {
       console.error(err);
     }
   };
-  const unreadCount = notifications.filter(
-    (n) => n.is_read === false || n.is_read === 0
-  ).length;
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   // ── Render
   return (
@@ -280,58 +272,43 @@ const Dashboard = () => {
 
               {notifications.length > 0 ? (
                 <ul className="space-y-2 max-h-64 overflow-y-auto">
-                  {Array.from(
-                    new Map(
-                      notifications.map((n, i) => [
-                        n.id ?? `socket-${i}-${n.created_at ?? Date.now()}`,
-                        n,
-                      ])
-                    )
-                  )
-                    .slice(0, 5)
-                    .map((n, i) => {
-                      const isUnread = n.is_read === false || n.is_read === 0;
-
-                      // Use a guaranteed unique key
-                      const key =
-                        n.id ?? `socket-${i}-${n.created_at ?? Date.now()}`;
-
-                      return (
-                        <li
-                          key={key}
-                          onClick={() => navigate("/dashboard/notifications")}
-                          className={`p-3 rounded-lg border flex justify-between items-start cursor-pointer transition ${
-                            isUnread
-                              ? "bg-blue-50 border-l-4 border-blue-500"
-                              : "bg-gray-50 border-gray-100"
-                          }`}
-                        >
-                          <div>
-                            <p className="text-gray-700 text-sm font-medium">
-                              Notification
-                            </p>
-                            <p className="text-gray-600 text-sm mt-1">
-                              {n.message}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1">
-                              {new Date(n.created_at).toLocaleString()}
-                            </p>
-                          </div>
-
-                          {isUnread && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleMarkRead(n.id);
-                              }}
-                              className="text-blue-500 hover:text-blue-700 text-xs font-semibold"
-                            >
-                              Mark Read
-                            </button>
-                          )}
-                        </li>
-                      );
-                    })}
+                  {notifications.slice(0, 5).map((n, i) => {
+                    const isUnread = !n.is_read;
+                    const key =
+                      n.id ?? `socket-${i}-${n.created_at ?? Date.now()}`;
+                    return (
+                      <li
+                        key={key}
+                        onClick={() => navigate("/dashboard/notifications")}
+                        className={`p-3 rounded-lg border flex justify-between items-start cursor-pointer transition ${
+                          isUnread
+                            ? "bg-blue-50 border-l-4 border-blue-500"
+                            : "bg-gray-50 border-gray-100"
+                        }`}
+                      >
+                        <div>
+                          <p className="text-gray-700 text-sm font-medium">
+                            Notification
+                          </p>
+                          <p className="text-sm text-gray-600">{n.message}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(n.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                        {isUnread && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMarkRead(n.id);
+                            }}
+                            className="text-blue-500 hover:text-blue-700 text-xs font-semibold"
+                          >
+                            Mark Read
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <p className="text-gray-400 text-sm">No recent notifications</p>
@@ -353,12 +330,17 @@ const Dashboard = () => {
             </button>
             <ReportStepper
               defaultType={defaultReportType}
-              editingReport={editingReport}
+              reportToEdit={editingReport}
               onClose={() => {
                 setStepperOpen(false);
                 setEditingReport(null);
               }}
               onReportAdded={() => toast.success("Report added!")}
+              onReportUpdated={(updatedReport) => {
+                // Update local context state so the table reflects changes immediately
+                updateReport(updatedReport.id, updatedReport); // optional, context might auto-handle
+                toast.success("Report updated successfully!");
+              }}
             />
           </div>
         </div>

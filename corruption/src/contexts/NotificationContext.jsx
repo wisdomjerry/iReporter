@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import apiService from "../services/api";
 import socket from "../services/socket";
 import { useUsers } from "./UserContext";
@@ -25,56 +19,53 @@ export const NotificationProvider = ({ children }) => {
     try {
       const list = await apiService.getNotifications();
       setNotifications(
-        (list || []).sort(
-          (a, b) => new Date(b.created_at) - new Date(a.created_at)
-        )
+        (list || [])
+          .filter((n) => String(n.user_id) === String(currentUser.id))
+          .map((n) => ({ ...n, is_read: !!n.is_read })) // normalize
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       );
     } catch (err) {
       console.error("❌ Fetch notifications error:", err);
     }
   }, [currentUser?.id]);
 
-  // ✅ Initialize socket once
+  // Socket setup
   useEffect(() => {
     if (!currentUser?.id) return;
-
     const userId = String(currentUser.id);
 
-    if (!socket.connected) {
-      socket.safeConnect();
-    }
+    if (!socket.connected) socket.safeConnect();
 
     const handleConnect = () => {
-      console.log("🔌 Socket connected:", socket.id);
       socket.emit("register", userId);
       console.log(`🟢 User ${userId} registered on server`);
     };
 
-    const handleError = (err) => {
-      console.error("❌ Socket connection error:", err.message);
-    };
+    const handleError = (err) => console.error("❌ Socket error:", err.message);
 
     const handleNotification = (payload) => {
+      if (String(payload.user_id) !== String(currentUser.id)) return;
+
       console.log("📩 New notification received:", payload);
 
-      // Update state
-      setNotifications((prev) => [payload, ...prev]);
+      // Normalize is_read
+      const notification = { ...payload, is_read: !!payload.is_read };
 
-      // Update reports in real-time
-      if (payload?.type === "status-update" && payload?.report) {
-        updateReportRealtime(payload.report);
+      // Add to state
+      setNotifications((prev) => [notification, ...prev]);
+
+      // Update reports if needed
+      if (notification?.type === "status-update" && notification?.report) {
+        updateReportRealtime(notification.report);
       }
 
       // Show toast
       toast.custom(() => (
         <div className="bg-white p-4 rounded-xl shadow border">
           <p className="font-semibold">Notification</p>
-          <p className="text-sm text-gray-600">{payload.message}</p>
+          <p className="text-sm text-gray-600">{notification.message}</p>
         </div>
       ));
-
-      // Optional DB sync
-      setTimeout(fetchNotifications, 800);
     };
 
     socket.on("connect", handleConnect);
@@ -85,11 +76,10 @@ export const NotificationProvider = ({ children }) => {
       socket.off("connect", handleConnect);
       socket.off("connect_error", handleError);
       socket.off("notification:new", handleNotification);
-      // We DON'T disconnect here; keeps socket alive for user session
     };
-  }, [currentUser?.id, fetchNotifications, updateReportRealtime]);
+  }, [currentUser?.id, updateReportRealtime]);
 
-  // Fetch notifications on mount
+  // Fetch on mount
   useEffect(() => {
     if (currentUser?.id) fetchNotifications();
   }, [currentUser?.id, fetchNotifications]);
@@ -98,7 +88,7 @@ export const NotificationProvider = ({ children }) => {
     try {
       await apiService.markNotificationRead(id);
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: 1 } : n))
+        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
       );
     } catch (err) {
       console.error("❌ Mark as read error:", err);
@@ -107,7 +97,7 @@ export const NotificationProvider = ({ children }) => {
 
   const markAllAsRead = async () => {
     try {
-      await apiService.markAllNotificationsRead(); // you need an API endpoint for this
+      await apiService.markAllNotificationsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch (err) {
       console.error("❌ Mark all as read error:", err);

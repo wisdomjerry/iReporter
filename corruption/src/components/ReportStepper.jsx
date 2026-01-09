@@ -31,9 +31,10 @@ const ReportStepper = ({
   onClose,
   defaultType = "",
   onReportAdded,
+  onReportUpdated,
 }) => {
-  const { createReport, setReports } = useReports();
-  const { } = useAuth();
+  const { createReport, setReports, updateReport } = useReports();
+  const {} = useAuth();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,7 +73,6 @@ const ReportStepper = ({
     if (isStepComplete(currentStep, formData)) nextStep();
     else alert("Please complete all fields in this step before proceeding.");
   };
- 
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
@@ -97,6 +97,19 @@ const ReportStepper = ({
 
       // Use context function
       const savedReport = await createReport(payload);
+
+      
+      if (reportToEdit) {
+        // --- EDIT MODE ---
+        savedReport = await updateReport(reportToEdit.id, payload); // call context update
+        toast.success("Report updated!");
+        onReportUpdated?.(savedReport); // callback to refresh parent state
+      } else {
+        // --- CREATE MODE ---
+        savedReport = await createReport(payload);
+        toast.success("Report submitted!");
+        onReportAdded?.(savedReport);
+      }
 
       toast.success("Report submitted!");
       onClose?.();

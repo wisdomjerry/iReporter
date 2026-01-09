@@ -94,7 +94,9 @@ const Reports = () => {
       ) : activeView === "list" ? (
         <ListView
           reports={reports}
+          role={role}  
           setEditingReport={setEditingReport}
+          setShowModal={setShowModal} 
           onDelete={deleteReport}
         />
       ) : (
