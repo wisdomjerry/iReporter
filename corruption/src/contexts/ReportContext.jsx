@@ -4,10 +4,13 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
 import apiService from "../services/api";
 import { useUsers } from "./UserContext";
 import toast from "react-hot-toast";
+import socket from "../services/socket";
+
 const ReportContext = createContext();
 export const useReports = () => useContext(ReportContext);
 export const ReportProvider = ({ children }) => {
@@ -252,18 +255,81 @@ export const ReportProvider = ({ children }) => {
       lng: incomingReport.lng ? Number(incomingReport.lng) : null,
     };
 
-    setReports((prev) =>
-      (prev || []).map((r) =>
-        r.id === formattedReport.id ? { ...r, ...formattedReport } : r
-      )
-    );
+    setReports((prev) => {
+      const exists = prev.find((r) => r.id === formattedReport.id);
+      if (exists) {
+        // Update existing
+        return prev.map((r) =>
+          r.id === formattedReport.id ? { ...r, ...formattedReport } : r
+        );
+      } else {
+        // Add new report if it doesn't exist
+        return [formattedReport, ...prev];
+      }
+    });
 
-    setLocations((prev) =>
-      (prev || []).map((l) =>
-        l.id === formattedReport.id ? { ...l, ...formattedReport } : l
-      )
-    );
+    setLocations((prev) => {
+      const exists = prev.find((l) => l.id === formattedReport.id);
+      if (exists) {
+        return prev.map((l) =>
+          l.id === formattedReport.id ? { ...l, ...formattedReport } : l
+        );
+      } else if (formattedReport.lat && formattedReport.lng) {
+        return [
+          ...prev,
+          {
+            id: formattedReport.id,
+            title: formattedReport.title,
+            type: formattedReport.type,
+            status: formattedReport.status,
+            lat: formattedReport.lat,
+            lng: formattedReport.lng,
+          },
+        ];
+      } else return prev;
+    });
   };
+
+  // ─── SOCKET REAL-TIME REPORT LISTENER ───
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    if (!socket.connected) socket.safeConnect();
+
+    const handleReportUpdate = (payload) => {
+      console.log("🟢 Real-time report update received:", payload);
+      updateReportRealtime(payload);
+    };
+
+    socket.on("report:updated", handleReportUpdate);
+
+    return () => {
+      socket.off("report:updated", handleReportUpdate);
+    };
+  }, [currentUser?.id]);
+
+  // ─── DERIVED REAL-TIME STATS ───
+  const stats = useMemo(() => {
+    return {
+      resolved: reports.filter((r) => r.status === "resolved").length,
+      rejected: reports.filter((r) => r.status === "rejected").length,
+      pending: reports.filter((r) => r.status === "pending").length,
+      underInvestigation: reports.filter((r) =>
+        ["under-investigation", "under investigation"].includes(
+          r.status?.toLowerCase()
+        )
+      ).length,
+      redFlags: reports.filter((r) => r.type === "red-flag").length,
+      interventions: reports.filter((r) => r.type === "intervention").length,
+    };
+  }, [reports]);
+
+  // ─── DERIVED REAL-TIME RECENT REPORTS ───
+  const recentReports = useMemo(() => {
+    return [...reports].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
+  }, [reports]);
 
   return (
     <ReportContext.Provider
@@ -280,6 +346,8 @@ export const ReportProvider = ({ children }) => {
         deleteReport,
         updateReportStatus,
         updateReportRealtime,
+        stats,
+        recentReports,
       }}
     >
       {children}

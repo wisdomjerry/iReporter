@@ -189,6 +189,9 @@ exports.updateReportStatus = async (req, res) => {
       report,
     });
 
+    // 🔥 THIS IS THE MISSING PIECE
+    io.to(String(report.user_id)).emit("report:updated", report);
+
     res.json({ message: "Status updated", report });
   } catch (err) {
     console.error(err);

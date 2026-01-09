@@ -21,7 +21,7 @@ export const NotificationProvider = ({ children }) => {
       setNotifications(
         (list || [])
           .filter((n) => String(n.user_id) === String(currentUser.id))
-          .map((n) => ({ ...n, is_read: !!n.is_read })) // normalize
+          .map((n) => ({ ...n, is_read: !!n.is_read }))
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       );
     } catch (err) {
@@ -54,8 +54,9 @@ export const NotificationProvider = ({ children }) => {
       // Add to state
       setNotifications((prev) => [notification, ...prev]);
 
-      // Update reports if needed
-      if (notification?.type === "status-update" && notification?.report) {
+      // ----- REAL-TIME REPORT UPDATE -----
+      // Update the report immediately if included in notification
+      if (notification.report) {
         updateReportRealtime(notification.report);
       }
 
