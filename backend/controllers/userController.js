@@ -60,6 +60,11 @@ const getAllUsers = async (req, res) => {
 // --- UPDATE PROFILE ---
 const updateProfile = async (req, res) => {
   try {
+    // Ensure req.user exists
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const userId = req.user.id;
     const { firstName, lastName, phone, bio } = req.body;
 
@@ -71,10 +76,12 @@ const updateProfile = async (req, res) => {
     if (bio !== undefined) updates.bio = bio;
     if (req.file?.path) updates.avatar = req.file.path; // Already Cloudinary URL
 
+    // Update user in Supabase
     const { data: updatedUser, error } = await supabase
       .from("users")
       .update(updates)
       .eq("id", userId)
+      .select()
       .single();
 
     if (error) throw error;
@@ -110,7 +117,6 @@ const markFirstLoginShown = async (req, res) => {
     res.status(500).json({ error: "Failed to update first login flag" });
   }
 };
-
 
 module.exports = {
   getProfile,
