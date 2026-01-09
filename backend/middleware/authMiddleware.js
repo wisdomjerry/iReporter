@@ -1,4 +1,5 @@
 const supabase = require("../supabaseClient");
+const jwt = require("jsonwebtoken");
 
 const authMiddleware = async (req, res, next) => {
   try {
