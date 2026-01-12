@@ -72,7 +72,6 @@ const Notifications = () => {
 
   return (
     <div className="p-6 pt-20 bg-gray-50 min-h-screen">
-      <Toaster position="top-center" />
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Notifications</h1>
         <div className="flex gap-4">

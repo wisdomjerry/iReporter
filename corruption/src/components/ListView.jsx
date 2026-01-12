@@ -256,7 +256,6 @@ const ListView = ({
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[50vh]">
-      <Toaster position="top-center" reverseOrder={false} />
       <h2 className="text-xl font-semibold text-gray-800 mb-4">All Reports</h2>
 
       {/* Desktop Table */}

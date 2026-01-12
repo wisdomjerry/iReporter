@@ -75,7 +75,7 @@ const LandingPage = () => {
               Sign In
             </button>
             <button
-              onClick={() => navigate("/registration")} // Changed to navigate to signup
+              onClick={() => navigate("/registration")} 
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200"
             >
               Get Started

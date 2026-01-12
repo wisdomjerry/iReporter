@@ -112,8 +112,7 @@ const ReportStepper = ({
         toast.success("Report submitted!");
         onReportAdded?.(savedReport);
       }
-
-      toast.success("Report submitted!");
+      // Close stepper
       onClose?.();
       setFormData({
         reportType: defaultType || "",

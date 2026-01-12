@@ -65,9 +65,6 @@ const UserReports = () => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
-      {/* Toast Container */}
-      <Toaster position="top-center" reverseOrder={false} />
-
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
         My Reports (Kanban View)
       </h1>
