@@ -1,6 +1,6 @@
 // controllers/notificationController.js
 const db = require("../supabaseClient");
-const sendEmail = require("../utils/sendEmailGmail");
+const sendEmail = require("../utils/sendEmail");
 
 /* -------------------- GET USER NOTIFICATIONS -------------------- */
 const getUserNotifications = async (req, res) => {
