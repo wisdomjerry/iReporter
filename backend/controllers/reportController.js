@@ -73,13 +73,24 @@ exports.createReport = async (req, res) => {
       });
 
       // --- Send email to admin ---
+      // 2️⃣ ALWAYS send email
       if (admin.email) {
         await sendEmail({
           to: admin.email,
-          subject: `New Report Submitted by ${user.first_name || user.email}`,
-          text: `A new report titled "${title}" was submitted.\n\nDescription: ${description}\nType: ${type}\nLocation: ${location}`,
+          subject: "New Report Submitted",
+          text: `Hello Admin,
+
+A new report titled "${title}" has been submitted.
+
+Type: ${type}
+Location: ${location}
+
+Please log in to review it.
+
+— iReporter Team`,
         });
-        console.log(`📧 Email sent to admin: ${admin.email}`);
+
+        console.log(`📧 Admin email sent: ${admin.email}`);
       }
     }
 
@@ -206,15 +217,21 @@ exports.updateReportStatus = async (req, res) => {
     // 4️⃣ Emit real-time report update
     io.to(String(report.user_id)).emit("report:updated", report);
 
-    // 5️⃣ Send email to the user
+    // 5️⃣ ALWAYS send email to user
     if (report.user?.email) {
       await sendEmail({
         to: report.user.email,
-        subject: `Report Status Updated: ${report.title}`,
-        text: message,
-        html: `<p>${message}</p>`,
+        subject: `Report Status Updated`,
+        text: `Hello ${report.user.first_name || ""},
+
+Your report "${report.title}" is now marked as "${status}".
+
+Please log in to view more details.
+
+— iReporter Team`,
       });
-      console.log(`📧 Email sent to ${report.user.email}`);
+
+      console.log(`📧 Status email sent to user: ${report.user.email}`);
     }
 
     res.json({ message: "Status updated", report });
