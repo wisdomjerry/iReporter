@@ -44,15 +44,12 @@ export const NotificationProvider = ({ children }) => {
 
     const handleConnect = () => {
       socket.emit("register", userId);
-      console.log(`🟢 User ${userId} registered on server`);
     };
 
     const handleError = (err) => console.error("❌ Socket error:", err.message);
 
     const handleNotification = (payload) => {
       if (String(payload.user_id) !== String(currentUser.id)) return;
-
-      console.log("📩 New notification received:", payload);
 
       // Normalize is_read
       const notification = { ...payload, is_read: !!payload.is_read };

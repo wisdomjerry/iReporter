@@ -1,42 +1,41 @@
-// utils/sendEmail.js
-const sgMail = require("@sendgrid/mail");
+// utils/sendEmailGmail.js
+const nodemailer = require("nodemailer");
 
-// Read SendGrid API key and sender from environment variables
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-const SENDGRID_SENDER =
-  process.env.SENDGRID_SENDER || "wisdom.jeremiah.upti@gmail.com";
+// Read Gmail credentials from environment variables
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_PASS = process.env.GMAIL_PASS;
 
-// Check for missing/invalid API key
-if (!SENDGRID_API_KEY || !SENDGRID_API_KEY.startsWith("SG.")) {
-  console.error(
-    "❌ SendGrid API key is missing or invalid! Emails will not be sent."
-  );
+if (!GMAIL_USER || !GMAIL_PASS) {
+  console.error("❌ Gmail credentials are missing! Emails will not be sent.");
 }
 
-// Set API key
-sgMail.setApiKey(SENDGRID_API_KEY);
+// Create a transporter
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: GMAIL_USER,
+    pass: GMAIL_PASS,
+  },
+});
 
 /**
- * Send an email using SendGrid
+ * Send an email via Gmail SMTP
  * @param {Object} param0
  * @param {string} param0.to - Recipient email
  * @param {string} param0.subject - Email subject
  * @param {string} param0.text - Plain text body
- * @param {string} [param0.html] - HTML body (optional)
+
  */
 const sendEmail = async ({ to, subject, text, html }) => {
-  if (!SENDGRID_API_KEY || !SENDGRID_API_KEY.startsWith("SG.")) {
-    console.warn("⚠️ Skipping email send due to invalid API key.");
+  if (!GMAIL_USER || !GMAIL_PASS) {
+    console.warn("⚠️ Skipping email send due to missing Gmail credentials.");
     return;
   }
 
   try {
-    await sgMail.send({
+    await transporter.sendMail({
+      from: `"iReporter Notifications" <${GMAIL_USER}>`,
       to,
-      from: {
-        email: SENDGRID_SENDER,
-        name: "iReporter Notifications",
-      },
       subject,
       text,
       html,

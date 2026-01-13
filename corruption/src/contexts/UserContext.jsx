@@ -64,12 +64,10 @@ export const UserProvider = ({ children }) => {
 
     // Emit register immediately
     socket.emit("register", userId);
-    console.log("📡 Socket registered for user:", userId);
 
     // Handle reconnect safely — single listener
     const handleReconnect = () => {
       socket.emit("register", userId);
-      console.log("🔁 Socket re-registered after reconnect");
     };
 
     socket.once("connect", handleReconnect); // 🔹 fires once on reconnect

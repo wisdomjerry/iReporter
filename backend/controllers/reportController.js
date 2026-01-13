@@ -51,19 +51,19 @@ exports.createReport = async (req, res) => {
       .select();
 
     if (error) throw error;
-
     report.media = JSON.parse(report.media || "[]");
 
+    // --- Fetch admins ---
     const { data: admins } = await db
       .from("users")
-      .select("id")
+      .select("id, email")
       .eq("role", "admin");
 
     const message = `📝 New report submitted: ${title}`;
     const io = req.app.get("io");
 
     for (const admin of admins || []) {
-      // DB + socket (ONCE)
+      // DB + socket notification
       await emitNotification(req, admin.id, message);
 
       io.to(String(admin.id)).emit("notification:new", {
@@ -71,6 +71,16 @@ exports.createReport = async (req, res) => {
         message,
         report,
       });
+
+      // --- Send email to admin ---
+      if (admin.email) {
+        await sendEmail({
+          to: admin.email,
+          subject: `New Report Submitted by ${user.first_name || user.email}`,
+          text: `A new report titled "${title}" was submitted.\n\nDescription: ${description}\nType: ${type}\nLocation: ${location}`,
+        });
+        console.log(`📧 Email sent to admin: ${admin.email}`);
+      }
     }
 
     res.status(201).json({ message: "Report created", report });
@@ -169,28 +179,43 @@ exports.updateReportStatus = async (req, res) => {
       return res.status(400).json({ error: "Invalid status" });
     }
 
+    // 1️⃣ Update status in DB
     await db.from("reports").update({ status }).eq("id", id);
 
+    // 2️⃣ Fetch the updated report including user info
     const { data: report } = await db
       .from("reports")
       .select("*, user:user_id(first_name, last_name, email)")
       .eq("id", id)
       .single();
 
-    const message = `Your report "${report.title}" is now "${status}"`;
+    if (!report) return res.status(404).json({ error: "Report not found" });
+
+    const message = `Your report "${report.title}" status has been updated to "${status}"`;
 
     const io = req.app.get("io");
 
+    // 3️⃣ Emit socket notification
     await emitNotification(req, report.user_id, message);
-
     io.to(String(report.user_id)).emit("notification:new", {
       type: "status-update",
       message,
       report,
     });
 
-    // 🔥 THIS IS THE MISSING PIECE
+    // 4️⃣ Emit real-time report update
     io.to(String(report.user_id)).emit("report:updated", report);
+
+    // 5️⃣ Send email to the user
+    if (report.user?.email) {
+      await sendEmail({
+        to: report.user.email,
+        subject: `Report Status Updated: ${report.title}`,
+        text: message,
+        html: `<p>${message}</p>`,
+      });
+      console.log(`📧 Email sent to ${report.user.email}`);
+    }
 
     res.json({ message: "Status updated", report });
   } catch (err) {

@@ -1,5 +1,6 @@
 // controllers/notificationController.js
 const db = require("../supabaseClient");
+const sendEmail = require("../utils/sendEmailGmail");
 
 /* -------------------- GET USER NOTIFICATIONS -------------------- */
 const getUserNotifications = async (req, res) => {
@@ -139,6 +140,18 @@ const createNotification = async (req, res) => {
     // 2️⃣ REAL-TIME EMIT
     io.to(String(user_id)).emit("notification:new", notification);
     console.log("📡 Notification emitted to user:", user_id);
+
+    // 3️⃣ SEND EMAIL TO ADMIN
+    const adminEmail = process.env.ADMIN_EMAIL; // add this to your .env
+    if (adminEmail) {
+      await sendEmail({
+        to: adminEmail,
+        subject: "New Report Notification",
+        text: `A new report notification has been created:\n\n${message}`,
+        html: `<p>A new report notification has been created:</p><p><b>${message}</b></p>`,
+      });
+      console.log(`📧 Email sent to admin at ${adminEmail}`);
+    }
 
     res.status(201).json({
       message: "Notification sent successfully",
