@@ -22,7 +22,6 @@ export const NotificationProvider = ({ children }) => {
   // Fetch notifications from API
   const fetchNotifications = useCallback(async () => {
     if (!currentUser?.id) return;
-    setLoading(true);
     try {
       const list = await apiService.getNotifications();
       setNotifications(
