@@ -99,13 +99,13 @@ const ReportStepper = ({
       };
 
       // Use context function
-      const savedReport = await createReport(payload);
+      let savedReport;
 
       if (reportToEdit) {
         // --- EDIT MODE ---
-        savedReport = await updateReport(reportToEdit.id, payload); // call context update
+        savedReport = await updateReport(reportToEdit.id, payload);
         toast.success("Report updated!");
-        onReportUpdated?.(savedReport); // callback to refresh parent state
+        onReportUpdated?.(savedReport);
       } else {
         // --- CREATE MODE ---
         savedReport = await createReport(payload);
