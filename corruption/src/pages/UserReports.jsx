@@ -37,16 +37,10 @@ const UserReports = () => {
                   // Call your delete function here, e.g.:
                   // await deleteReport(reportId);
                   setRefreshKey((prev) => prev + 1);
-                  toast.success("Report deleted successfully", {
-                    position: "top-center",
-                    duration: 2500,
-                  });
+                  toast.success("Report deleted successfully");
                 } catch (err) {
                   console.error("Failed to delete report:", err);
-                  toast.error("Failed to delete report", {
-                    position: "top-center",
-                    duration: 2500,
-                  });
+                  toast.error("Failed to delete report");
                 }
               }}
               className="px-3 py-1 rounded bg-red-500 hover:bg-red-600 text-white"
@@ -57,7 +51,6 @@ const UserReports = () => {
         </div>
       ),
       {
-        position: "top-center",
         duration: Infinity, // stays until user clicks
       }
     );

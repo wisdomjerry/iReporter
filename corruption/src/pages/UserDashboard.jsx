@@ -36,14 +36,31 @@ const StatCard = ({ title, value, icon: Icon, color }) => {
 const QuickActions = ({ openStepper, setType }) => {
   const navigate = useNavigate();
   const actions = [
-    { label: "Add Red-Flag Record", icon: Flag, className: "bg-red-500 hover:bg-red-700 text-white", type: "Red Flag" },
-    { label: "Add Intervention", icon: Zap, className: "bg-teal-500 hover:bg-teal-700 text-white", type: "Intervention" },
-    { label: "View All Reports", icon: CheckCircle, className: "bg-gray-100 hover:bg-gray-200 text-gray-800", type: "view" },
+    {
+      label: "Add Red-Flag Record",
+      icon: Flag,
+      className: "bg-red-500 hover:bg-red-700 text-white",
+      type: "Red Flag",
+    },
+    {
+      label: "Add Intervention",
+      icon: Zap,
+      className: "bg-teal-500 hover:bg-teal-700 text-white",
+      type: "Intervention",
+    },
+    {
+      label: "View All Reports",
+      icon: CheckCircle,
+      className: "bg-gray-100 hover:bg-gray-200 text-gray-800",
+      type: "view",
+    },
   ];
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-      <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
+      <h2 className="text-xl font-semibold text-gray-800 mb-4">
+        Quick Actions
+      </h2>
       <div className="space-y-3">
         {actions.map((a, i) => (
           <button
@@ -53,7 +70,9 @@ const QuickActions = ({ openStepper, setType }) => {
                 ? navigate("/dashboard/reports")
                 : (setType(a.type), openStepper())
             }
-            className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition ${a.className} ${a.className.includes("bg-gray") ? "" : "shadow-md"}`}
+            className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition ${
+              a.className
+            } ${a.className.includes("bg-gray") ? "" : "shadow-md"}`}
           >
             <a.icon className="w-5 h-5" />
             <span>{a.label}</span>
@@ -68,7 +87,13 @@ const QuickActions = ({ openStepper, setType }) => {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { currentUser, setCurrentUser } = useUsers();
-  const { reports, recentReports, deleteReport, updateReport, updateReportRealtime } = useReports();
+  const {
+    reports,
+    recentReports,
+    deleteReport,
+    updateReport,
+    updateReportRealtime,
+  } = useReports();
 
   const { notifications, markAsRead, markAllAsRead } = useNotifications();
 
@@ -102,7 +127,9 @@ const Dashboard = () => {
       rejected: reports.filter((r) => r.status === "rejected").length,
       pending: reports.filter((r) => r.status === "pending").length,
       underInvestigation: reports.filter((r) =>
-        ["under-investigation", "under investigation"].includes(r.status?.toLowerCase())
+        ["under-investigation", "under investigation"].includes(
+          r.status?.toLowerCase()
+        )
       ).length,
       redFlags: reports.filter((r) => r.type === "red-flag").length,
       interventions: reports.filter((r) => r.type === "intervention").length,
@@ -152,9 +179,12 @@ const Dashboard = () => {
         {/* HEADER */}
         <header className="mb-8 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
+            <h1 className="text-2xl font-bold text-gray-800">
+              Dashboard Overview
+            </h1>
             <p className="text-gray-500 mt-1">
-              Welcome back, {currentUser?.firstName || currentUser?.email || "User"}!
+              Welcome back,{" "}
+              {currentUser?.firstName || currentUser?.email || "User"}!
             </p>
           </div>
         </header>
@@ -162,12 +192,42 @@ const Dashboard = () => {
         {/* STATS GRID */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
           {[
-            { title: "Resolved Reports", value: stats.resolved, icon: CheckCircle, color: "green" },
-            { title: "Pending Reports", value: stats.pending, icon: Clock, color: "gray" },
-            { title: "Under Investigation", value: stats.underInvestigation, icon: Search, color: "yellow" },
-            { title: "Rejected Reports", value: stats.rejected, icon: XCircle, color: "red" },
-            { title: "Red-Flag Reports", value: stats.redFlags, icon: Flag, color: "red" },
-            { title: "Interventions", value: stats.interventions, icon: Zap, color: "blue" },
+            {
+              title: "Resolved Reports",
+              value: stats.resolved,
+              icon: CheckCircle,
+              color: "green",
+            },
+            {
+              title: "Pending Reports",
+              value: stats.pending,
+              icon: Clock,
+              color: "gray",
+            },
+            {
+              title: "Under Investigation",
+              value: stats.underInvestigation,
+              icon: Search,
+              color: "yellow",
+            },
+            {
+              title: "Rejected Reports",
+              value: stats.rejected,
+              icon: XCircle,
+              color: "red",
+            },
+            {
+              title: "Red-Flag Reports",
+              value: stats.redFlags,
+              icon: Flag,
+              color: "red",
+            },
+            {
+              title: "Interventions",
+              value: stats.interventions,
+              icon: Zap,
+              color: "blue",
+            },
           ].map((s) => (
             <StatCard key={s.title} {...s} />
           ))}
@@ -193,14 +253,22 @@ const Dashboard = () => {
 
           {/* RIGHT PANEL */}
           <div className="space-y-6">
-            <QuickActions openStepper={() => setStepperOpen(true)} setType={setDefaultReportType} />
+            <QuickActions
+              openStepper={() => setStepperOpen(true)}
+              setType={setDefaultReportType}
+            />
 
             {/* RECENT NOTIFICATIONS */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <div className="flex justify-between items-center mb-3">
-                <h2 className="text-xl font-semibold text-gray-800">Recent Notifications</h2>
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Recent Notifications
+                </h2>
                 {notifications.length > 0 && (
-                  <button onClick={handleMarkAllRead} className="text-blue-500 hover:text-blue-700 text-sm font-semibold">
+                  <button
+                    onClick={handleMarkAllRead}
+                    className="text-blue-500 hover:text-blue-700 text-sm font-semibold"
+                  >
                     Mark All Read
                   </button>
                 )}
@@ -210,19 +278,26 @@ const Dashboard = () => {
                 <ul className="space-y-2 max-h-64 overflow-y-auto">
                   {notifications.slice(0, 5).map((n, i) => {
                     const isUnread = !n.is_read;
-                    const key = n.id ?? `socket-${i}-${n.created_at ?? Date.now()}`;
+                    const key =
+                      n.id ?? `socket-${i}-${n.created_at ?? Date.now()}`;
                     return (
                       <li
                         key={key}
                         onClick={() => navigate("/dashboard/notifications")}
                         className={`p-3 rounded-lg border flex justify-between items-start cursor-pointer transition ${
-                          isUnread ? "bg-blue-50 border-l-4 border-blue-500" : "bg-gray-50 border-gray-100"
+                          isUnread
+                            ? "bg-blue-50 border-l-4 border-blue-500"
+                            : "bg-gray-50 border-gray-100"
                         }`}
                       >
                         <div>
-                          <p className="text-gray-700 text-sm font-medium">Notification</p>
+                          <p className="text-gray-700 text-sm font-medium">
+                            Notification
+                          </p>
                           <p className="text-sm text-gray-600">{n.message}</p>
-                          <p className="text-xs text-gray-500 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(n.created_at).toLocaleString()}
+                          </p>
                         </div>
                         {isUnread && (
                           <button
@@ -266,12 +341,10 @@ const Dashboard = () => {
               }}
               onReportAdded={(newReport) => {
                 updateReportRealtime(newReport); // add to context immediately
-                toast.success("Report added!");
               }}
               onReportUpdated={(updatedReport) => {
                 updateReport(updatedReport.id, updatedReport); // backend update
                 updateReportRealtime(updatedReport); // context update
-                toast.success("Report updated successfully!");
               }}
             />
           </div>

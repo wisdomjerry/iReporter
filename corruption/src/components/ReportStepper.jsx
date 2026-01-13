@@ -104,12 +104,14 @@ const ReportStepper = ({
       if (reportToEdit) {
         // --- EDIT MODE ---
         savedReport = await updateReport(reportToEdit.id, payload);
-        toast.success("Report updated!");
+        toast.success("Report updated!", { id: "report-updated" });
+
         onReportUpdated?.(savedReport);
       } else {
         // --- CREATE MODE ---
         savedReport = await createReport(payload);
-        toast.success("Report submitted!");
+        toast.success("Report submitted!", { id: "report-submitted" });
+
         onReportAdded?.(savedReport);
       }
       // Close stepper
@@ -123,12 +125,11 @@ const ReportStepper = ({
         lng: "",
         media: null,
       });
-
-      // ⭐ Trigger parent callback after successful submission
-      if (onReportAdded) onReportAdded(savedReport);
     } catch (err) {
       console.error("Submit report error:", err);
-      toast.error(err.message || "Failed to submit report");
+      toast.error(err.message || "Failed to submit report", {
+        id: "report-submit-error",
+      });
     } finally {
       setIsSubmitting(false);
     }
