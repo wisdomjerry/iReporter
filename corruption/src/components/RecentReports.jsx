@@ -21,6 +21,24 @@ const RecentReports = ({ reports = [], onEditReport, onStatusUpdate }) => {
     );
   }
 
+  const normalizeReport = (report) => ({
+    id: report.id,
+    title: report.title || "",
+    description: report.description || "",
+    location: report.location || "",
+    lat: report.lat ?? null,
+    lng: report.lng ?? null,
+    type:
+      report.type === "red-flag"
+        ? "Red Flag"
+        : report.type === "intervention"
+        ? "Intervention"
+        : report.type || "pending",
+    status: report.status || "pending",
+    media: report.media || [],
+    user_id: report.user_id || null,
+  });
+
   return (
     <div className="space-y-3">
       {recent.map((report, idx) => (
@@ -46,7 +64,7 @@ const RecentReports = ({ reports = [], onEditReport, onStatusUpdate }) => {
                     onStatusUpdate(
                       report.id,
                       e.target.value.toLowerCase().replace(/\s+/g, "-"),
-                      report.user_id || null // safe fallback
+                      report.user_id || null
                     );
                   }
                 }}
@@ -61,9 +79,10 @@ const RecentReports = ({ reports = [], onEditReport, onStatusUpdate }) => {
               </select>
             </div>
           </div>
+
           {report?.status === "pending" && onEditReport && (
             <button
-              onClick={() => onEditReport(report)}
+              onClick={() => onEditReport(normalizeReport(report))}
               className="bg-teal-600 text-white px-3 py-1 rounded text-sm hover:bg-teal-700"
             >
               Edit
