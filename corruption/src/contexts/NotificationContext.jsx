@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import apiService from "../services/api";
 import socket from "../services/socket";
 import { useUsers } from "./UserContext";
@@ -16,6 +22,7 @@ export const NotificationProvider = ({ children }) => {
   // Fetch notifications from API
   const fetchNotifications = useCallback(async () => {
     if (!currentUser?.id) return;
+    setLoading(true);
     try {
       const list = await apiService.getNotifications();
       setNotifications(
@@ -105,6 +112,26 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
+  const deleteNotification = async (id) => {
+    try {
+      await apiService.delete(`/notifications/${id}`);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error("❌ Delete notification error:", err);
+      throw err;
+    }
+  };
+
+  const deleteAllNotifications = async () => {
+    try {
+      await apiService.delete("/notifications");
+      setNotifications([]);
+    } catch (err) {
+      console.error("❌ Delete all notifications error:", err);
+      throw err;
+    }
+  };
+
   return (
     <NotificationContext.Provider
       value={{
@@ -112,6 +139,8 @@ export const NotificationProvider = ({ children }) => {
         fetchNotifications,
         markAsRead,
         markAllAsRead,
+        deleteNotification,
+        deleteAllNotifications,
       }}
     >
       {children}

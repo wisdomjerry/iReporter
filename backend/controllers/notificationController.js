@@ -60,7 +60,11 @@ const deleteNotification = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { error } = await db.from("notifications").delete().eq("id", id);
+    const { error } = await db
+      .from("notifications")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", req.user.id); // 🔐 SECURITY FIX
 
     if (error) throw error;
 
@@ -68,6 +72,23 @@ const deleteNotification = async (req, res) => {
   } catch (err) {
     console.error("Delete notification error:", err);
     res.status(500).json({ error: "Failed to delete notification" });
+  }
+};
+
+/* -------------------- DELETE ALL USER NOTIFICATIONS -------------------- */
+const deleteAllNotifications = async (req, res) => {
+  try {
+    const { error } = await db
+      .from("notifications")
+      .delete()
+      .eq("user_id", req.user.id);
+
+    if (error) throw error;
+
+    res.json({ message: "All notifications deleted" });
+  } catch (err) {
+    console.error("Delete all notifications error:", err);
+    res.status(500).json({ error: "Failed to delete all notifications" });
   }
 };
 
@@ -84,7 +105,9 @@ const createNotification = async (req, res) => {
     const { user_id, message } = req.body;
 
     if (!user_id || !message) {
-      return res.status(400).json({ error: "user_id and message are required" });
+      return res
+        .status(400)
+        .json({ error: "user_id and message are required" });
     }
 
     // ✅ Check if user exists
@@ -96,16 +119,18 @@ const createNotification = async (req, res) => {
 
     if (userError) throw userError;
     if (!user) {
-      return res.status(400).json({ error: `User with ID ${user_id} does not exist` });
+      return res
+        .status(400)
+        .json({ error: `User with ID ${user_id} does not exist` });
     }
 
     const io = req.app.get("io");
 
     // 1️⃣ Save notification
-    const { data: [notification], error: insertError } = await db
-      .from("notifications")
-      .insert([{ user_id, message }])
-      .select();
+    const {
+      data: [notification],
+      error: insertError,
+    } = await db.from("notifications").insert([{ user_id, message }]).select();
 
     if (insertError) throw insertError;
 
@@ -130,5 +155,6 @@ module.exports = {
   markNotificationRead,
   markAllNotificationsRead,
   deleteNotification,
+  deleteAllNotifications,
   createNotification,
 };
