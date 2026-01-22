@@ -1,24 +1,16 @@
 // controllers/reportController.js
 const db = require("../supabaseClient"); // Supabase client
 const sendEmail = require("../utils/sendEmail");
-const emitNotification = require("../utils/emitNotification");
+const emitNotification = require("../utils/emitNotificationSafe");
 
 /* ================= CREATE REPORT ================= */
 exports.createReport = async (req, res) => {
   try {
-    const user = req.user;
-    const {
-      title,
-      description,
-      location,
-      type = "general",
-      lat,
-      lng,
-    } = req.body;
+    const user = req.user; // user object from auth middleware
+    const { title, description, location, type = "general", lat, lng } = req.body;
 
-    if (!title || !description || !location) {
+    if (!title || !description || !location)
       return res.status(400).json({ error: "Missing required fields" });
-    }
 
     const parsedLat = parseFloat(lat) || 0;
     const parsedLng = parseFloat(lng) || 0;
@@ -30,73 +22,54 @@ exports.createReport = async (req, res) => {
       );
     }
 
-    const {
-      data: [report],
-      error,
-    } = await db
+    // 1️⃣ Create the report
+    const { data: [report], error } = await db
       .from("reports")
-      .insert([
-        {
-          user_id: user.id,
-          title,
-          description,
-          type,
-          status: "pending",
-          location,
-          lat: parsedLat,
-          lng: parsedLng,
-          media: JSON.stringify(mediaPaths),
-        },
-      ])
+      .insert([{
+        user_id: user.id, // keep DB foreign key
+        title,
+        description,
+        type,
+        status: "pending",
+        location,
+        lat: parsedLat,
+        lng: parsedLng,
+        media: JSON.stringify(mediaPaths),
+      }])
       .select();
 
     if (error) throw error;
     report.media = JSON.parse(report.media || "[]");
 
-    // --- Fetch admins ---
-    const { data: admins } = await db
-      .from("users")
-      .select("id, email")
-      .eq("role", "admin");
-
     const message = `📝 New report submitted: ${title}`;
     const io = req.app.get("io");
 
-    for (const admin of admins || []) {
-      // DB + socket notification
-      await emitNotification(req, admin.id, message);
+    // 2️⃣ Fetch admins (include legacy_id for sockets)
+    const { data: admins } = await db
+      .from("users")
+      .select("id, legacy_id, email")
+      .eq("role", "admin");
 
-      io.to(String(admin.id)).emit("notification:new", {
+    for (const admin of admins || []) {
+      const adminRoomId = admin.legacy_id || admin.id;
+
+      // Emit socket notification (online)
+      await emitNotification(req, adminRoomId, message, {
+        sendEmail: true,
+        emailSubject: "New Report Submitted",
+      });
+
+      // Also emit a socket update (optional, frontend may listen)
+      io.to(String(adminRoomId)).emit("notification:new", {
         type: "new-report",
         message,
         report,
       });
-
-      // --- Send email to admin ---
-      // 2️⃣ ALWAYS send email
-      if (admin.email) {
-        await sendEmail({
-          to: admin.email,
-          subject: "New Report Submitted",
-          text: `Hello Admin,
-
-A new report titled "${title}" has been submitted.
-
-Type: ${type}
-Location: ${location}
-
-Please log in to review it.
-
-— iReporter Team`,
-        });
-
-        console.log(`📧 Admin email sent: ${admin.email}`);
-      }
     }
 
     res.status(201).json({ message: "Report created", report });
   } catch (err) {
-    console.error(err);
+    console.error("Create report error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
@@ -106,8 +79,7 @@ exports.getAllReports = async (_, res) => {
   try {
     const { data, error } = await db
       .from("reports")
-      .select(
-        `
+      .select(`
         id,
         title,
         description,
@@ -124,24 +96,18 @@ exports.getAllReports = async (_, res) => {
           last_name,
           email
         )
-      `
-      )
+      `)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Supabase error:", error);
-      return res.status(500).json({ error: error.message });
-    }
+    if (error) return res.status(500).json({ error: error.message });
 
-    res.json(
-      (data || []).map((r) => ({
-        ...r,
-        media: r.media ? JSON.parse(r.media) : [],
-        userName: r.users
-          ? `${r.users.first_name} ${r.users.last_name}`.trim()
-          : "Unknown",
-      }))
-    );
+    res.json((data || []).map(r => ({
+      ...r,
+      media: r.media ? JSON.parse(r.media) : [],
+      userName: r.users
+        ? `${r.users.first_name} ${r.users.last_name}`.trim()
+        : "Unknown",
+    })));
   } catch (err) {
     console.error("Get all reports error:", err);
     res.status(500).json({ error: "Server error" });
@@ -153,24 +119,24 @@ exports.getUserReports = async (req, res) => {
   try {
     const { data: rows, error } = await db
       .from("reports")
-      .select("*, user:user_id(first_name, last_name, email)")
+      .select("*, user:user_id(first_name, last_name, email, legacy_id)")
       .eq("user_id", req.user.id)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
-    const reports = (rows || []).map((r) => ({
+    const reports = (rows || []).map(r => ({
       ...r,
       media: r.media ? JSON.parse(r.media) : [],
       userName: r.user
-        ? `${r.user.first_name || ""} ${r.user.last_name || ""}`.trim() ||
-          r.user.email
+        ? `${r.user.first_name || ""} ${r.user.last_name || ""}`.trim() || r.user.email
         : "Unknown",
     }));
 
-    // Emit real-time update to the user
+    // Emit real-time update to user using legacy_id room
     const io = req.app.get("io");
-    io.to(String(req.user.id)).emit("user-reports", { reports });
+    const roomId = req.user.legacy_id || req.user.id;
+    io.to(String(roomId)).emit("user-reports", { reports });
 
     res.json(reports);
   } catch (err) {
@@ -186,57 +152,31 @@ exports.updateReportStatus = async (req, res) => {
     const { status } = req.body;
 
     const allowed = ["pending", "under-investigation", "resolved", "rejected"];
-    if (!allowed.includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
-    }
+    if (!allowed.includes(status)) return res.status(400).json({ error: "Invalid status" });
 
-    // 1️⃣ Update status in DB
     await db.from("reports").update({ status }).eq("id", id);
 
-    // 2️⃣ Fetch the updated report including user info
     const { data: report } = await db
       .from("reports")
-      .select("*, user:user_id(first_name, last_name, email)")
+      .select("*, user:user_id(first_name, last_name, email, legacy_id)")
       .eq("id", id)
       .single();
 
     if (!report) return res.status(404).json({ error: "Report not found" });
 
     const message = `Your report "${report.title}" status has been updated to "${status}"`;
-
     const io = req.app.get("io");
 
-    // 3️⃣ Emit socket notification
-    await emitNotification(req, report.user_id, message);
-    io.to(String(report.user_id)).emit("notification:new", {
-      type: "status-update",
-      message,
-      report,
-    });
+    // Emit notification using legacy_id
+    const userRoomId = report.user.legacy_id || report.user_id;
+    await emitNotification(req, userRoomId, message, { sendEmail: true, emailSubject: "Report Status Updated" });
 
-    // 4️⃣ Emit real-time report update
-    io.to(String(report.user_id)).emit("report:updated", report);
-
-    // 5️⃣ ALWAYS send email to user
-    if (report.user?.email) {
-      await sendEmail({
-        to: report.user.email,
-        subject: `Report Status Updated`,
-        text: `Hello ${report.user.first_name || ""},
-
-Your report "${report.title}" is now marked as "${status}".
-
-Please log in to view more details.
-
-— iReporter Team`,
-      });
-
-      console.log(`📧 Status email sent to user: ${report.user.email}`);
-    }
+    // Emit real-time report update
+    io.to(String(userRoomId)).emit("report:updated", report);
 
     res.json({ message: "Status updated", report });
   } catch (err) {
-    console.error(err);
+    console.error("Update status error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
@@ -246,33 +186,24 @@ exports.deleteReport = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data: report } = await db
-      .from("reports")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const { data: report } = await db.from("reports").select("*").eq("id", id).single();
 
-    if (!report || report.user_id !== req.user.id) {
+    if (!report || report.user_id !== req.user.id)
       return res.status(403).json({ error: "Unauthorized" });
-    }
 
     await db.from("reports").delete().eq("id", id);
 
     const message = `Your report "${report.title}" was deleted`;
-
     const io = req.app.get("io");
 
-    await emitNotification(req, req.user.id, message);
+    const roomId = req.user.legacy_id || req.user.id;
+    await emitNotification(req, roomId, message, { sendEmail: true });
 
-    io.to(String(req.user.id)).emit("notification:new", {
-      type: "report-deleted",
-      message,
-      reportId: id,
-    });
+    io.to(String(roomId)).emit("notification:new", { type: "report-deleted", message, reportId: id });
 
     res.json({ message: "Report deleted" });
   } catch (err) {
-    console.error(err);
+    console.error("Delete report error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };

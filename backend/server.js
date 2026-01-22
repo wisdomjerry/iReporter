@@ -96,10 +96,10 @@ io.on("connection", (socket) => {
   console.log("🔌 Socket connected:", socket.id);
 
   // Register user to a room
-  socket.on("register", (userId) => {
-    if (!userId) return;
+  socket.on("register", (legacyId) => {
+    if (!legacyId) return;
 
-    const room = String(userId);
+    const room = String(legacyId);
     socket.join(room);
 
     console.log(`🟢 User ${room} joined room (${socket.id})`);
