@@ -104,7 +104,7 @@ exports.getAllReports = async (_, res) => {
         media,
         created_at,
         user_id,
-        users (
+        users:users!reports_user_id_fkey (
           first_name,
           last_name,
           email,
@@ -114,17 +114,18 @@ exports.getAllReports = async (_, res) => {
       )
       .order("created_at", { ascending: false });
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) throw error;
 
-    res.json(
-      (data || []).map((r) => ({
-        ...r,
-        media: r.media ? JSON.parse(r.media) : [],
-        userName: r.users
-          ? `${r.users.first_name} ${r.users.last_name}`.trim()
-          : "Unknown",
-      })),
-    );
+    const reports = (data || []).map((r) => ({
+      ...r,
+      media: r.media ? JSON.parse(r.media) : [],
+      userName: r.users
+        ? `${r.users.first_name} ${r.users.last_name}`.trim()
+        : "Unknown",
+      userLegacyId: r.users?.legacy_id || null,
+    }));
+
+    res.json(reports);
   } catch (err) {
     console.error("Get all reports error:", err);
     res.status(500).json({ error: "Server error" });
@@ -136,7 +137,7 @@ exports.getUserReports = async (req, res) => {
   try {
     const { data: rows, error } = await db
       .from("reports")
-      .select("*, user:user_id(first_name, last_name, email, legacy_id)")
+      .select("*")
       .eq("user_id", req.user.id)
       .order("created_at", { ascending: false });
 
@@ -145,12 +146,9 @@ exports.getUserReports = async (req, res) => {
     const reports = (rows || []).map((r) => ({
       ...r,
       media: r.media ? JSON.parse(r.media) : [],
-      userName: r.user
-        ? `${r.user.first_name || ""} ${r.user.last_name || ""}`.trim() ||
-          r.user.email
-        : "Unknown",
     }));
 
+    // Socket update using legacy_id room
     const io = req.app.get("io");
     const roomId = req.user.legacy_id || req.user.id;
     io.to(String(roomId)).emit("user-reports", { reports });
