@@ -163,14 +163,14 @@ exports.getUserReports = async (req, res) => {
 /* ================= UPDATE REPORT STATUS ================= */
 exports.updateReportStatus = async (req, res) => {
   try {
-    const { id } = req.params; // id from URL
+    const { id } = req.params;
     const { status } = req.body;
 
     const allowed = ["pending", "under-investigation", "resolved", "rejected"];
     if (!allowed.includes(status))
       return res.status(400).json({ error: "Invalid status" });
 
-    // 1️⃣ Fetch the report first
+    // 1️⃣ Fetch the report
     const { data: report, error: fetchError } = await db
       .from("reports")
       .select("*")
@@ -188,19 +188,47 @@ exports.updateReportStatus = async (req, res) => {
 
     if (updateError) throw updateError;
 
-    // 3️⃣ Emit notification & socket update
+    const updatedReport = { ...report, status };
     const message = `Your report "${report.title}" status has been updated to "${status}"`;
     const io = req.app.get("io");
 
-    const userRoomId = report.user_id; // still use legacy_id if you want sockets
-    await emitNotification(req, userRoomId, message, {
-      sendEmail: true,
-      emailSubject: "Report Status Updated",
+    // 3️⃣ Emit socket **immediately** to user
+    const userRoomId = report.user_id; // or legacy_id if your frontend uses it
+    io.to(String(userRoomId)).emit("report:updated", updatedReport);
+    io.to(String(userRoomId)).emit("notification:new", {
+      message,
+      type: "status-update",
+      report: updatedReport,
     });
 
-    io.to(String(userRoomId)).emit("report:updated", { ...report, status });
+    // 4️⃣ Fire-and-forget DB + email
+    (async () => {
+      try {
+        await db
+          .from("notifications")
+          .insert([{ user_id: report.user_id, message }]);
+        // optionally send email
+        const { data: user } = await db
+          .from("users")
+          .select("email, first_name")
+          .eq("id", report.user_id)
+          .single();
 
-    res.json({ message: "Status updated", report: { ...report, status } });
+        if (user?.email) {
+          await sendEmail({
+            to: user.email,
+            subject: "Report Status Updated",
+            text: message,
+            html: `<p>${message}</p>`,
+          });
+        }
+      } catch (err) {
+        console.error("Background notification/email error:", err);
+      }
+    })();
+
+    // 5️⃣ Respond to admin immediately
+    res.json({ message: "Status updated", report: updatedReport });
   } catch (err) {
     console.error("Update status error:", err);
     res.status(500).json({ error: "Server error" });
