@@ -163,35 +163,44 @@ exports.getUserReports = async (req, res) => {
 /* ================= UPDATE REPORT STATUS ================= */
 exports.updateReportStatus = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params; // id from URL
     const { status } = req.body;
 
     const allowed = ["pending", "under-investigation", "resolved", "rejected"];
     if (!allowed.includes(status))
       return res.status(400).json({ error: "Invalid status" });
 
-    await db.from("reports").update({ status }).eq("id", id);
-
-    const { data: report } = await db
+    // 1️⃣ Fetch the report first
+    const { data: report, error: fetchError } = await db
       .from("reports")
-      .select("*, user:user_id(first_name, last_name, email, legacy_id)")
+      .select("*")
       .eq("id", id)
       .single();
 
-    if (!report) return res.status(404).json({ error: "Report not found" });
+    if (fetchError || !report)
+      return res.status(404).json({ error: "Report not found" });
 
+    // 2️⃣ Update status
+    const { error: updateError } = await db
+      .from("reports")
+      .update({ status })
+      .eq("id", id);
+
+    if (updateError) throw updateError;
+
+    // 3️⃣ Emit notification & socket update
     const message = `Your report "${report.title}" status has been updated to "${status}"`;
     const io = req.app.get("io");
 
-    const userRoomId = report.user.legacy_id || report.user_id;
+    const userRoomId = report.user_id; // still use legacy_id if you want sockets
     await emitNotification(req, userRoomId, message, {
       sendEmail: true,
       emailSubject: "Report Status Updated",
     });
 
-    io.to(String(userRoomId)).emit("report:updated", report);
+    io.to(String(userRoomId)).emit("report:updated", { ...report, status });
 
-    res.json({ message: "Status updated", report });
+    res.json({ message: "Status updated", report: { ...report, status } });
   } catch (err) {
     console.error("Update status error:", err);
     res.status(500).json({ error: "Server error" });
