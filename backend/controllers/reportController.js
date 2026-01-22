@@ -1,7 +1,7 @@
 // controllers/reportController.js
 const db = require("../supabaseClient"); // Supabase client
 const sendEmail = require("../utils/sendEmail");
-const emitNotification = require("../utils/emitNotificationSafe");
+const emitNotification = require("../utils/emitNotification");
 
 /* ================= CREATE REPORT ================= */
 exports.createReport = async (req, res) => {
